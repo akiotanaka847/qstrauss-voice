@@ -1,0 +1,13 @@
+faster-whisper>=1.0.0
+sounddevice>=0.4.6
+numpy>=1.24.0
+scipy>=1.11.0
+pyperclip>=1.8.2
+pynput>=1.7.6
+
+# Mac only
+rumps>=0.4.0; sys_platform == "darwin"
+
+# Windows only
+pystray>=0.19.4; sys_platform == "win32"
+Pillow>=10.0.0; sys_platform == "win32"

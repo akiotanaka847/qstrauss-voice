@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QStrauss Voice — Descarga</title>
+  <style>
+    :root {
+      --green: #34d058;
+      --dark-green: #1b3a1b;
+      --bg: #0d1117;
+      --card: #161b22;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --border: #30363d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 60px 24px; }
+
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 56px; }
+    .hero img { width: 120px; height: 120px; border-radius: 24px; margin-bottom: 24px; }
+    .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 12px; }
+    .hero h1 span { color: var(--green); }
+    .hero p { font-size: 18px; color: var(--muted); max-width: 500px; margin: 0 auto; line-height: 1.6; }
+
+    /* Download cards */
+    .downloads { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 56px; }
+    @media (max-width: 600px) { .downloads { grid-template-columns: 1fr; } }
+
+    .dl-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .dl-card:hover { border-color: var(--green); }
+
+    .dl-card .platform-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+    .dl-card h2 { font-size: 22px; margin-bottom: 8px; }
+    .dl-card .hotkey {
+      display: inline-block;
+      background: var(--dark-green);
+      color: var(--green);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      margin-bottom: 16px;
+    }
+    .dl-card .size { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    .btn {
+      display: inline-block;
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn.disabled {
+      background: var(--border);
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 56px;
+    }
+    @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
+
+    .feature {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .feature h3 { font-size: 16px; margin-bottom: 8px; }
+    .feature h3 span { margin-right: 8px; }
+    .feature p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    /* Install instructions */
+    .install { margin-bottom: 56px; }
+    .install h2 { font-size: 24px; margin-bottom: 24px; text-align: center; }
+
+    .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+    .tab {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .tab.active { border-color: var(--green); color: var(--green); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .steps {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 32px;
+      list-style: none;
+      counter-reset: step;
+    }
+    .steps li {
+      counter-increment: step;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(step);
+      display: inline-flex;
+      width: 28px; height: 28px;
+      align-items: center;
+      justify-content: center;
+      background: var(--dark-green);
+      color: var(--green);
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 12px;
+    }
+    .steps code {
+      background: var(--bg);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--green);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    footer a { color: var(--green); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+      <img src="icon.png" alt="QStrauss Voice">
+      <h1>QStrauss <span>Voice</span></h1>
+      <p>Dictado por voz que nunca sale de tu computadora. Presiona un atajo, habla, y el texto aparece donde est&aacute; tu cursor.</p>
+    </div>
+
+    <!-- Download Cards -->
+    <div class="downloads">
+      <div class="dl-card">
+        <span class="platform-icon">&#63743;</span>
+        <h2>macOS</h2>
+        <div class="hotkey">&#x2325; Space (Option + Space)</div>
+        <div class="size">~280 MB &middot; macOS 13+</div>
+        <a class="btn" id="btn-mac" href="LINK_MAC_AQUI">
+          Descargar para Mac
+        </a>
+      </div>
+      <div class="dl-card">
+        <span class="platform-icon">&#xe2;</span>
+        <h2>Windows</h2>
+        <div class="hotkey">Ctrl + Space</div>
+        <div class="size">~300 MB &middot; Windows 10+</div>
+        <a class="btn disabled" id="btn-win" href="#">
+          Pr&oacute;ximamente
+        </a>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature">
+        <h3><span>&#x1f510;</span> 100% Local</h3>
+        <p>Todo se procesa en tu computadora. Tu voz nunca sale a internet. Sin cuentas, sin suscripciones.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x26a1;</span> Invisible</h3>
+        <p>Sin iconos en el dock o barra de tareas. Solo aparece cuando lo necesitas con el atajo de teclado.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x1f30e;</span> Multi-idioma</h3>
+        <p>Detecta autom&aacute;ticamente el idioma o configura uno fijo. Soporta espa&ntilde;ol, ingl&eacute;s, y 90+ idiomas.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x2328;</span> Atajo Personalizable</h3>
+        <p>Configura las teclas que quieras. Mac: <code>&#x2325; Space</code> por defecto. Windows: <code>Ctrl+Space</code> por defecto.</p>
+      </div>
+    </div>
+
+    <!-- Install Instructions -->
+    <div class="install">
+      <h2>Instalaci&oacute;n</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('mac')">macOS</button>
+        <button class="tab" onclick="showTab('win')">Windows</button>
+      </div>
+
+      <div id="tab-mac" class="tab-content active">
+        <ol class="steps">
+          <li>Descarga y descomprime <strong>QStrauss-Voice-mac.zip</strong></li>
+          <li>Arrastra <strong>QStrauss Voice.app</strong> a la carpeta <code>/Applications</code></li>
+          <li>Abre la app &mdash; Si aparece "desarrollador no identificado": click derecho &rarr; Abrir</li>
+          <li>Dale permiso de <strong>Micr&oacute;fono</strong> cuando macOS pregunte</li>
+          <li>Configura tu atajo en la ventana de Settings (por defecto <code>&#x2325; Space</code>)</li>
+          <li>Cierra Settings &mdash; la app queda invisible en segundo plano</li>
+          <li>Desde cualquier app: presiona tu atajo &rarr; habla &rarr; presiona otra vez &rarr; texto pegado</li>
+        </ol>
+      </div>
+
+      <div id="tab-win" class="tab-content">
+        <ol class="steps">
+          <li>Descarga y descomprime <strong>QStrauss-Voice-win.zip</strong></li>
+          <li>Ejecuta <strong>QStrauss Voice.exe</strong> (no requiere instalaci&oacute;n)</li>
+          <li>Configura tu atajo en la ventana de Settings (por defecto <code>Ctrl+Space</code>)</li>
+          <li>Cierra Settings &mdash; la app queda en la bandeja del sistema</li>
+          <li>Desde cualquier app: presiona tu atajo &rarr; habla &rarr; presiona otra vez &rarr; texto pegado</li>
+        </ol>
+      </div>
+    </div>
+
+    <footer>
+      QStrauss Voice v1.0.0 &mdash; Built by <a href="#">QStrauss</a>
+    </footer>
+
+  </div>
+
+  <script>
+    function showTab(id) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // Auto-detect platform and highlight the right button
+    (function() {
+      var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      if (!isMac) {
+        document.getElementById('btn-win').style.boxShadow = '0 0 0 2px #34d058';
+      } else {
+        document.getElementById('btn-mac').style.boxShadow = '0 0 0 2px #34d058';
+      }
+    })();
+  </script>
+</body>
+</html>

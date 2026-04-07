@@ -1,0 +1,142 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  # ── macOS Build ──────────────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller Pillow
+          pip install pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz
+
+      - name: Build .app with PyInstaller
+        run: |
+          pyinstaller \
+            --noconfirm --windowed \
+            --name "QStrauss Voice" \
+            --icon "resources/QStraussVoice.icns" \
+            --add-data "dictionary.json:." \
+            --add-data "resources:resources" \
+            --add-data "overlay.py:." \
+            --add-data "settings_window.py:." \
+            --hidden-import "faster_whisper" \
+            --hidden-import "ctranslate2" \
+            --hidden-import "tokenizers" \
+            --hidden-import "huggingface_hub" \
+            --hidden-import "sounddevice" \
+            --hidden-import "pynput.keyboard._darwin" \
+            --hidden-import "pynput.mouse._darwin" \
+            --hidden-import "objc" \
+            --hidden-import "AppKit" \
+            --hidden-import "Foundation" \
+            --hidden-import "Quartz" \
+            --hidden-import "WebKit" \
+            --hidden-import "overlay" \
+            --hidden-import "settings_window" \
+            --collect-all "faster_whisper" \
+            --collect-all "ctranslate2" \
+            --collect-all "pyobjc-framework-Cocoa" \
+            --collect-all "pyobjc-framework-WebKit" \
+            --collect-all "pyobjc-framework-Quartz" \
+            voice_typer.py
+
+      - name: Configure Info.plist
+        run: |
+          PLIST="dist/QStrauss Voice.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'QStrauss Voice needs microphone access to transcribe your voice.'" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.qstrauss.voice" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 'QStrauss Voice'" "$PLIST" 2>/dev/null || true
+
+      - name: Codesign with entitlements
+        run: |
+          codesign --deep --force --sign - \
+            --entitlements entitlements.plist \
+            "dist/QStrauss Voice.app"
+
+      - name: Package
+        run: cd dist && zip -r ../QStrauss-Voice-mac.zip "QStrauss Voice.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-build
+          path: QStrauss-Voice-mac.zip
+
+  # ── Windows Build ────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install faster-whisper sounddevice pyperclip pynput numpy scipy
+          pip install pyinstaller Pillow pystray
+
+      - name: Build .exe with PyInstaller
+        run: |
+          pyinstaller `
+            --noconfirm --noconsole `
+            --name "QStrauss Voice" `
+            --add-data "dictionary.json;." `
+            --add-data "resources;resources" `
+            --hidden-import "faster_whisper" `
+            --hidden-import "ctranslate2" `
+            --hidden-import "tokenizers" `
+            --hidden-import "huggingface_hub" `
+            --hidden-import "sounddevice" `
+            --hidden-import "pynput.keyboard._win32" `
+            --hidden-import "pynput.mouse._win32" `
+            --hidden-import "pystray._win32" `
+            --collect-all "faster_whisper" `
+            --collect-all "ctranslate2" `
+            voice_typer.py
+
+      - name: Package
+        run: Compress-Archive -Path "dist\QStrauss Voice" -DestinationPath QStrauss-Voice-win.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-build
+          path: QStrauss-Voice-win.zip
+
+  # ── Create Release ───────────────────────────────────────────────────────────
+  release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-build
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-build
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            QStrauss-Voice-mac.zip
+            QStrauss-Voice-win.zip

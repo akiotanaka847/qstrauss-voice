@@ -1,0 +1,23 @@
+{
+  "_comment": "QStrauss Voice — Diccionario personalizado de la empresa",
+
+  "corrections": {
+    "workfron":     "Workfront",
+    "work front":   "Workfront",
+    "work fron":    "Workfront",
+    "q strauss":    "QStrauss",
+    "custrauss":    "QStrauss",
+    "qs trous":     "QStrauss",
+    "eicher":       "Azure",
+    "aser":         "Azure",
+    "ay sure":      "Azure",
+    "microsoft tim": "Microsoft Teams",
+    "tims":         "Teams"
+  },
+
+  "hints": [
+    "Workfront", "QStrauss", "Azure", "Microsoft Teams",
+    "Fusion", "API", "Claude", "Anthropic",
+    "intake", "workflow", "chatbot", "deployment"
+  ]
+}

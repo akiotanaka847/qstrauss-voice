@@ -1,0 +1,10 @@
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+app.log
+settings.json
+*.spec

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: #1a2b1a;
+    color: #e0e8e0;
+    -webkit-user-select: none;
+    cursor: default;
+    overflow-y: auto;
+  }
+
+  /* ── Tabs ───────────────────────────────── */
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #263626;
+    position: sticky; top: 0;
+    background: #1a2b1a;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 13px 0;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6a7a6a;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .2s, border-color .2s;
+  }
+  .tab:hover { color: #8a9a8a; }
+  .tab.active { color: #4ade80; border-bottom-color: #4ade80; }
+
+  /* ── Logo ───────────────────────────────── */
+  .logo {
+    text-align: center;
+    padding: 28px 0 8px;
+  }
+  .logo-text {
+    font-size: 26px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: #5a7a5a;
+    margin-top: 4px;
+  }
+
+  /* ── Content ────────────────────────────── */
+  .page { display: none; padding: 0 20px 30px; }
+  .page.active { display: block; }
+
+  .section-title {
+    color: #4ade80;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 20px 0 8px;
+  }
+
+  .card {
+    background: #223322;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    border-bottom: 1px solid #2a3d2a;
+    min-height: 50px;
+  }
+  .row:last-child { border-bottom: none; }
+
+  .row-left {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1px solid #4a5a4a;
+    font-size: 10px;
+    color: #6a7a6a;
+    cursor: help;
+    flex-shrink: 0;
+  }
+
+  .row-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Toggle switch ──────────────────────── */
+  .toggle {
+    width: 44px; height: 24px;
+    background: #3a4a3a;
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: #4ade80; }
+  .toggle::after {
+    content: '';
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px; left: 2px;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* ── Key capture button ─────────────────── */
+  .key-btn {
+    background: #3a4a3a;
+    color: #e0e8e0;
+    border: 1px solid #4a5a4a;
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    min-width: 50px;
+    text-align: center;
+    transition: border-color .2s;
+  }
+  .key-btn:hover { border-color: #4ade80; }
+  .key-btn.capturing {
+    border-color: #4ade80;
+    color: #4ade80;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+  }
+
+  .reset-btn {
+    background: none;
+    border: none;
+    color: #6a7a6a;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color .2s;
+  }
+  .reset-btn:hover { color: #4ade80; }
+
+  /* ── Select dropdown ────────────────────── */
+  select {
+    background: #3a4a3a;
+    color: #e0e8e0;
+    border: 1px solid #4a5a4a;
+    border-radius: 8px;
+    padding: 7px 28px 7px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    min-width: 200px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236a7a6a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  select:focus { outline: none; border-color: #4ade80; }
+
+  /* ── Instructions page ──────────────────── */
+  .instructions {
+    padding: 10px 0;
+    line-height: 1.7;
+    font-size: 13.5px;
+    color: #b0c0b0;
+  }
+  .instructions h3 {
+    color: #4ade80;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 18px 0 6px;
+    letter-spacing: 0.5px;
+  }
+  .instructions h3:first-child { margin-top: 6px; }
+  .instructions code {
+    background: #2a3d2a;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: #4ade80;
+  }
+  .instructions ul {
+    padding-left: 20px;
+    margin: 4px 0;
+  }
+  .instructions li { margin: 3px 0; }
+
+  /* ── Collapsible sections ─────────────────── */
+  .collapsible-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .collapsible-header .chevron {
+    margin-left: auto;
+    font-size: 18px;
+    color: #6a7a6a;
+    transition: transform .2s;
+  }
+  .collapsible-header.open .chevron { transform: rotate(180deg); }
+  .collapsible-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease;
+  }
+  .collapsible-body.open { max-height: 600px; }
+  .collapsible-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: #2a3d2a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #4ade80;
+    flex-shrink: 0;
+  }
+
+  /* ── Number stepper ─────────────────────── */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stepper input {
+    width: 48px;
+    background: #3a4a3a;
+    border: 1px solid #4a5a4a;
+    border-radius: 8px;
+    color: #e0e8e0;
+    text-align: center;
+    padding: 5px 4px;
+    font-size: 14px;
+    font-family: inherit;
+    -moz-appearance: textfield;
+  }
+  .stepper input::-webkit-inner-spin-button,
+  .stepper input::-webkit-outer-spin-button { opacity: 1; }
+  .stepper input:focus { outline: none; border-color: #4ade80; }
+  .stepper-label {
+    font-size: 13px;
+    color: #7a8a7a;
+  }
+
+  /* ── Save button ────────────────────────── */
+  .save-btn {
+    background: #3a4a3a;
+    color: #e0e8e0;
+    border: 1px solid #4a5a4a;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .save-btn:hover { border-color: #4ade80; background: #2a3d2a; }
+
+  /* ── Status indicator ───────────────────── */
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .status-dot.green { background: #4ade80; }
+  .status-dot.yellow { background: #facc15; }
+  .status-dot.gray { background: #6a7a6a; }
+
+  /* ── Credits text ───────────────────────── */
+  .credits-text {
+    padding: 10px 16px 16px;
+    font-size: 13px;
+    color: #7a8a7a;
+    line-height: 1.6;
+  }
+
+  /* ── Footer status bar ──────────────────── */
+  .footer-bar {
+    position: sticky;
+    bottom: 0;
+    background: #162216;
+    border-top: 1px solid #263626;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: #5a6a5a;
+    z-index: 10;
+  }
+  .footer-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .footer-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .footer-bar a {
+    color: #6a7a6a;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color .2s;
+  }
+  .footer-bar a:hover { color: #4ade80; }
+  .footer-bar .version { color: #4ade80; }
+</style>
+</head>
+<body>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('config')">Configuraci&oacute;n</div>
+  <div class="tab" onclick="switchTab('help')">Instrucciones</div>
+</div>
+
+<!-- Logo -->
+<div class="logo">
+  <img src="icon_1024.png" alt="QStrauss Voice"
+       style="width:64px; height:64px; border-radius:14px; margin-bottom:8px; box-shadow: 0 2px 12px rgba(0,0,0,.3);">
+  <div class="logo-text">QStrauss Voice</div>
+  <div class="logo-sub">Dictado local con IA</div>
+</div>
+
+<!-- ═══ Configuration Page ═══ -->
+<div class="page active" id="page-config">
+
+  <div class="section-title">GENERAL</div>
+  <div class="card">
+    <div class="row">
+      <div class="row-left">Atajo de Transcripci&oacute;n <span class="info-icon" title="Tecla para iniciar/detener la grabaci&oacute;n">i</span></div>
+      <div class="row-right">
+        <button class="key-btn" id="hotkey-btn" onclick="captureHotkey()">&#x2325; Space</button>
+        <button class="reset-btn" onclick="resetHotkey()" title="Restaurar">&#x21bb;</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Mantener Presionado <span class="info-icon" title="Mant&eacute;n presionado para grabar, suelta para transcribir">i</span></div>
+      <div class="row-right">
+        <div class="toggle" id="push-to-talk" onclick="toggleSwitch(this, 'push_to_talk')"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Idioma <span class="info-icon" title="Idioma para la transcripci&oacute;n">i</span></div>
+      <div class="row-right">
+        <select id="language" onchange="setSetting('language', this.value)">
+          <option value="auto">Auto-detect</option>
+          <option value="es">Espa&ntilde;ol</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Micr&oacute;fono <span class="info-icon" title="Dispositivo de entrada de audio">i</span></div>
+      <div class="row-right">
+        <select id="microphone" onchange="setSetting('microphone', this.value)">
+          <option value="default">Default</option>
+        </select>
+        <button class="reset-btn" onclick="refreshMics()" title="Actualizar">&#x21bb;</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Modelo Whisper <span class="info-icon" title="Modelo m&aacute;s grande = m&aacute;s preciso pero m&aacute;s lento">i</span></div>
+      <div class="row-right">
+        <select id="whisper-model" onchange="setSetting('whisper_model', this.value)">
+          <option value="tiny">tiny (r&aacute;pido)</option>
+          <option value="base" selected>base (recomendado)</option>
+          <option value="small">small (preciso)</option>
+          <option value="medium">medium (muy preciso)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">SALIDA</div>
+  <div class="card">
+    <div class="row">
+      <div class="row-left">Pegado Autom&aacute;tico <span class="info-icon" title="C&oacute;mo se inserta el texto transcrito">i</span></div>
+      <div class="row-right">
+        <select id="paste-mode" onchange="setSetting('paste_mode', this.value)">
+          <option value="clipboard_paste">Portapapeles + Pegado autom&aacute;tico</option>
+          <option value="clipboard_only">Solo portapapeles</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Agregar Espacio Final <span class="info-icon" title="A&ntilde;ade un espacio despu&eacute;s del texto transcrito">i</span></div>
+      <div class="row-right">
+        <div class="toggle on" id="trailing-space" onclick="toggleSwitch(this, 'trailing_space')"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">DICCIONARIO</div>
+  <div class="card">
+    <div class="row">
+      <div class="row-left">Correcciones activas</div>
+      <div class="row-right"><span id="dict-count" style="color:#6a7a6a">&mdash;</span></div>
+    </div>
+    <div class="row">
+      <div class="row-left">Recargar Diccionario <span class="info-icon" title="Recarga dictionary.json sin reiniciar">i</span></div>
+      <div class="row-right">
+        <button class="reset-btn" onclick="reloadDict()" title="Recargar" style="font-size:20px">&#x21bb;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">APLICACI&Oacute;N</div>
+  <div class="card">
+    <div class="row">
+      <div class="row-left">Iniciar Oculto <span class="info-icon" title="Inicia la app sin mostrar esta ventana">i</span></div>
+      <div class="row-right">
+        <div class="toggle" id="start-hidden" onclick="toggleSwitch(this, 'start_hidden')"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Iniciar al Arranque <span class="info-icon" title="Abrir QStrauss Voice autom&aacute;ticamente al encender">i</span></div>
+      <div class="row-right">
+        <div class="toggle" id="launch-at-login" onclick="toggleSwitch(this, 'launch_at_login')"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Ventana de Grabaci&oacute;n <span class="info-icon" title="Posici&oacute;n del popup de grabaci&oacute;n en pantalla">i</span></div>
+      <div class="row-right">
+        <select id="overlay-position" onchange="setSetting('overlay_position', this.value)">
+          <option value="center">Centro</option>
+          <option value="top">Superior</option>
+          <option value="bottom">Inferior</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Gesti&oacute;n de Memoria <span class="info-icon" title="Descargar modelo de la memoria tras inactividad">i</span></div>
+      <div class="row-right">
+        <select id="memory-mgmt" onchange="setSetting('memory_timeout', this.value)">
+          <option value="0">Nunca descargar</option>
+          <option value="120">Despu&eacute;s de 2 minutos</option>
+          <option value="300">Despu&eacute;s de 5 minutos</option>
+          <option value="600">Despu&eacute;s de 10 minutos</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">HISTORIAL</div>
+  <div class="card">
+    <div class="row">
+      <div class="row-left">L&iacute;mite de Historial <span class="info-icon" title="N&uacute;mero m&aacute;ximo de transcripciones guardadas">i</span></div>
+      <div class="row-right">
+        <div class="stepper">
+          <input type="number" id="history-limit" value="5" min="1" max="50" onchange="setSetting('history_limit', parseInt(this.value))">
+          <span class="stepper-label">entradas</span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-left">Eliminaci&oacute;n autom&aacute;tica de grabaciones <span class="info-icon" title="Pol&iacute;tica de retenci&oacute;n del historial">i</span></div>
+      <div class="row-right">
+        <select id="history-retention" onchange="setSetting('history_retention', this.value)">
+          <option value="keep_last">Mantener las &uacute;ltimas 5</option>
+          <option value="keep_session">Solo sesi&oacute;n actual</option>
+          <option value="keep_none">No guardar</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acerca de (collapsible) -->
+  <div style="margin-top: 20px;">
+    <div class="card">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        <span class="collapsible-icon">i</span>
+        Acerca de
+        <span class="chevron">&#x2303;</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="section-title" style="padding-left:16px">ACERCA DE</div>
+        <div style="padding: 0 0 4px;">
+          <div class="row">
+            <div class="row-left">Idioma de la aplicaci&oacute;n <span class="info-icon" title="Idioma de la interfaz">i</span></div>
+            <div class="row-right">
+              <select id="app-language" onchange="setSetting('app_language', this.value)">
+                <option value="es">Espa&ntilde;ol (Spanish)</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-left">Versi&oacute;n <span class="info-icon" title="Versi&oacute;n actual de QStrauss Voice">i</span></div>
+            <div class="row-right"><span style="color:#7a8a7a; font-family: 'SF Mono', monospace; font-size: 13px;">v1.0.0</span></div>
+          </div>
+        </div>
+
+        <div class="section-title" style="padding-left:16px">RECONOCIMIENTOS</div>
+        <div style="padding: 0 0 4px;">
+          <div class="row" style="border-bottom:none; flex-direction: column; align-items: flex-start; gap: 6px;">
+            <div class="row-left">Whisper &mdash; OpenAI <span class="info-icon" title="Modelo de reconocimiento de voz">i</span></div>
+            <div class="credits-text" style="padding: 4px 0 0;">
+              QStrauss Voice usa faster-whisper, una reimplementaci&oacute;n optimizada del modelo Whisper de OpenAI,
+              para procesamiento de voz a texto r&aacute;pido y 100% local. Gracias al trabajo de Systran y la comunidad open-source.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ Instructions Page ═══ -->
+<div class="page" id="page-help">
+  <div class="instructions">
+    <h3>C&oacute;mo usar QStrauss Voice</h3>
+    <ul>
+      <li>Presiona <code>&#x2325; Space</code> (Option + Space) para comenzar a grabar</li>
+      <li>Habla normalmente — el audio se procesa 100% local</li>
+      <li>Presiona <code>&#x2325; Space</code> de nuevo para detener y transcribir</li>
+      <li>El texto se pega autom&aacute;ticamente donde tengas el cursor</li>
+    </ul>
+
+    <h3>Atajos de teclado</h3>
+    <ul>
+      <li><code>&#x2325; Space</code> &mdash; Iniciar / detener grabaci&oacute;n</li>
+      <li><code>&#x2325; L</code> &mdash; Cambiar idioma</li>
+      <li><code>&#x2325; R</code> &mdash; Recargar diccionario</li>
+    </ul>
+
+    <h3>Diccionario personalizado</h3>
+    <p>Edita <code>dictionary.json</code> para agregar correcciones autom&aacute;ticas (ej: "work fron" &rarr; "Workfront") y hints que mejoran la precisi&oacute;n del modelo.</p>
+
+    <h3>Permisos necesarios</h3>
+    <ul>
+      <li><strong>Micr&oacute;fono</strong> &mdash; Para capturar audio</li>
+      <li><strong>Accesibilidad</strong> &mdash; Para el atajo de teclado global y el pegado autom&aacute;tico</li>
+    </ul>
+    <p style="margin-top:8px">Configura en: <code>System Settings &rarr; Privacy &amp; Security</code></p>
+
+    <h3>Privacidad</h3>
+    <p>Todo el procesamiento es local. Tu audio <strong>nunca</strong> sale de tu computadora. Se usa el modelo Whisper de OpenAI corriendo directamente en tu CPU.</p>
+  </div>
+</div>
+
+<!-- ═══ Footer status bar ═══ -->
+<div class="footer-bar">
+  <div class="footer-bar-left">
+    <span class="status-dot yellow" id="model-dot"></span>
+    <span id="model-status">Cargando modelo…</span>
+  </div>
+  <div class="footer-bar-right">
+    <a onclick="checkUpdates()">Buscar actualizaciones</a>
+    <span class="version">v1.0.0</span>
+  </div>
+</div>
+
+<script>
+  // ── Tab switching ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (tab === 'config' && i === 0) || (tab === 'help' && i === 1));
+    });
+    document.getElementById('page-config').classList.toggle('active', tab === 'config');
+    document.getElementById('page-help').classList.toggle('active', tab === 'help');
+  }
+
+  // ── Toggle switches ──
+  function toggleSwitch(el, key) {
+    el.classList.toggle('on');
+    setSetting(key, el.classList.contains('on'));
+  }
+
+  // ── Send setting to Python ──
+  function setSetting(key, value) {
+    try {
+      window.webkit.messageHandlers.settings.postMessage(
+        JSON.stringify({ action: 'set', key: key, value: value })
+      );
+    } catch (e) {
+      console.log('Bridge not available:', key, value);
+    }
+  }
+
+  // ── Hotkey capture ──
+  let capturing = false;
+  function captureHotkey() {
+    const btn = document.getElementById('hotkey-btn');
+    if (capturing) return;
+    capturing = true;
+    btn.classList.add('capturing');
+    btn.textContent = 'Presiona tecla…';
+    document.addEventListener('keydown', function handler(e) {
+      e.preventDefault();
+      let parts = [];
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.altKey) parts.push('\u2325');
+      if (e.metaKey) parts.push('\u2318');
+      if (e.shiftKey) parts.push('\u21e7');
+      if (e.key && !['Control','Alt','Meta','Shift'].includes(e.key)) {
+        parts.push(e.key === ' ' ? 'Space' : e.key.toUpperCase());
+      }
+      if (parts.length > 1 || (!e.ctrlKey && !e.altKey && !e.metaKey)) {
+        btn.textContent = parts.join(' + ') || '\u2325 Space';
+        btn.classList.remove('capturing');
+        capturing = false;
+        document.removeEventListener('keydown', handler);
+        setSetting('hotkey_display', btn.textContent);
+      }
+    });
+  }
+
+  function resetHotkey() {
+    document.getElementById('hotkey-btn').textContent = '\u2325 Space';
+    setSetting('hotkey_display', '\u2325 Space');
+  }
+
+  function refreshMics() {
+    try {
+      window.webkit.messageHandlers.settings.postMessage(
+        JSON.stringify({ action: 'refresh_mics' })
+      );
+    } catch(e) {}
+  }
+
+  function reloadDict() {
+    try {
+      window.webkit.messageHandlers.settings.postMessage(
+        JSON.stringify({ action: 'reload_dict' })
+      );
+    } catch(e) {}
+  }
+
+  // ── Collapsible sections ──
+  function toggleCollapsible(header) {
+    header.classList.toggle('open');
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+  }
+
+  // ── Check updates (placeholder) ──
+  function checkUpdates() {
+    alert('QStrauss Voice v1.0.0 — Ya tienes la versión más reciente.');
+  }
+
+  // ── Set toggle state helper ──
+  function setToggle(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value) el.classList.add('on');
+    else el.classList.remove('on');
+  }
+
+  // ── Update model status in footer ──
+  function updateModelStatus(status, label) {
+    const dot = document.getElementById('model-dot');
+    const text = document.getElementById('model-status');
+    if (!dot || !text) return;
+    dot.className = 'status-dot ' + status;  // green, yellow, gray
+    text.textContent = label;
+  }
+
+  // ── Called from Python to load current settings ──
+  function loadSettings(cfg) {
+    // General
+    setToggle('push-to-talk', cfg.push_to_talk);
+    setToggle('trailing-space', cfg.trailing_space !== false);
+
+    if (cfg.language) document.getElementById('language').value = cfg.language;
+    if (cfg.whisper_model) document.getElementById('whisper-model').value = cfg.whisper_model;
+    if (cfg.paste_mode) document.getElementById('paste-mode').value = cfg.paste_mode;
+    if (cfg.hotkey_display) document.getElementById('hotkey-btn').textContent = cfg.hotkey_display;
+    if (cfg.dict_count !== undefined) document.getElementById('dict-count').textContent = cfg.dict_count + ' correcciones';
+
+    // Aplicación
+    setToggle('start-hidden', cfg.start_hidden);
+    setToggle('launch-at-login', cfg.launch_at_login);
+    if (cfg.overlay_position) document.getElementById('overlay-position').value = cfg.overlay_position;
+    if (cfg.memory_timeout !== undefined) document.getElementById('memory-mgmt').value = String(cfg.memory_timeout);
+
+    // Historial
+    if (cfg.history_limit) document.getElementById('history-limit').value = cfg.history_limit;
+    if (cfg.history_retention) document.getElementById('history-retention').value = cfg.history_retention;
+
+    // Acerca de
+    if (cfg.app_language) document.getElementById('app-language').value = cfg.app_language;
+
+    // Microphones
+    if (cfg.microphones) {
+      const sel = document.getElementById('microphone');
+      sel.innerHTML = '';
+      cfg.microphones.forEach(function(m) {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        if (m.id === cfg.microphone) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Model status
+    if (cfg.model_ready) {
+      updateModelStatus('green', cfg.model_label || 'Whisper Base (Local)');
+    } else {
+      updateModelStatus('yellow', 'Cargando modelo…');
+    }
+  }
+</script>
+
+</body>
+</html>
