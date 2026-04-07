@@ -546,15 +546,114 @@ if IS_MAC:
 # ══════════════════════════════════════════════════════════════════════════════
 
 elif IS_WINDOWS:
+    import tkinter as tk
+
+    class WinOverlay:
+        """Floating overlay for Windows using tkinter."""
+        def __init__(self):
+            self._root = tk.Tk()
+            self._root.withdraw()
+            self._win = tk.Toplevel(self._root)
+            self._win.overrideredirect(True)
+            self._win.attributes("-topmost", True)
+            self._win.attributes("-alpha", 0.93)
+            self._win.configure(bg="#1c2e1c")
+            W, H = 360, 120
+            sw = self._win.winfo_screenwidth()
+            sh = self._win.winfo_screenheight()
+            x = (sw - W) // 2
+            y = int(sh * 0.3)
+            self._win.geometry(f"{W}x{H}+{x}+{y}")
+            # Title
+            tk.Label(self._win, text="QStrauss", font=("Segoe UI", 18, "bold"),
+                     fg="white", bg="#1c2e1c").pack(pady=(16, 4))
+            # Status label
+            self._label = tk.Label(self._win, text="Escuchando...",
+                                   font=("Segoe UI", 12), fg="#66d966", bg="#1c2e1c")
+            self._label.pack()
+            # Hint
+            self._hint = tk.Label(self._win, text="Ctrl+Space para detener",
+                                  font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c")
+            self._hint.pack(pady=(4, 0))
+            self._win.withdraw()
+
+        def show(self, status="listening"):
+            text = "Escuchando..." if status == "listening" else "Transcribiendo..."
+            self._label.config(text=text)
+            self._win.deiconify()
+            self._win.lift()
+            self._win.attributes("-topmost", True)
+
+        def set_status(self, status):
+            text = "Escuchando..." if status == "listening" else "Transcribiendo..."
+            self._label.config(text=text)
+
+        def hide(self):
+            self._win.withdraw()
+
+        def update(self):
+            """Must be called periodically from main thread."""
+            self._root.update()
+
     def run_windows():
         start_audio_stream()
         threading.Thread(target=load_model, daemon=True).start()
-        start_hotkey_listener()
-        print("Running in background. Press hotkey to record.")
-        # Keep main thread alive
+
+        overlay = WinOverlay()
+
+        # Status callback for UI updates (thread-safe via flag)
+        _pending = {"status": None}
+
+        def queue_status(s):
+            _pending["status"] = s
+
+        def apply_status():
+            s = _pending["status"]
+            if s is None:
+                return
+            _pending["status"] = None
+            log(f"_apply_status: {s}")
+            if s == "recording":
+                overlay.show("listening")
+            elif s == "transcribing":
+                overlay.set_status("transcribing")
+            else:
+                overlay.hide()
+
+        start_hotkey_listener(update_ui=queue_status)
+        log("Running in background. Press Ctrl+Space to record.")
+
+        # System tray icon
+        try:
+            import pystray
+            from PIL import Image as PILImage
+            icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
+            if os.path.exists(icon_path):
+                tray_image = PILImage.open(icon_path).resize((64, 64))
+            else:
+                tray_image = PILImage.new("RGB", (64, 64), "#1c2e1c")
+
+            def on_quit(icon, item):
+                icon.stop()
+                os._exit(0)
+
+            tray = pystray.Icon(
+                "QStrauss Voice",
+                tray_image,
+                "QStrauss Voice — Ctrl+Space",
+                menu=pystray.Menu(pystray.MenuItem("Salir", on_quit)),
+            )
+            threading.Thread(target=tray.run, daemon=True).start()
+            log("System tray icon created")
+        except Exception as e:
+            log(f"Tray icon error (non-fatal): {e}")
+
+        # Main loop — poll for status changes
         try:
             while True:
-                time.sleep(1)
+                apply_status()
+                overlay.update()
+                time.sleep(0.05)
         except KeyboardInterrupt:
             pass
 
