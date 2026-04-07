@@ -262,9 +262,19 @@ def toggle_recording(update_ui=None):
     else:
         start_recording(update_ui=update_ui)
 
-# ─── Hotkey listener (Carbon API — no Accessibility needed) ──────────────────
+# ─── Hotkey listener ─────────────────────────────────────────────────────────
 
-# Mac virtual keycodes
+# Must keep references alive to prevent garbage collection
+_hotkey_refs = []
+
+def start_hotkey_listener(update_ui=None):
+    if IS_MAC:
+        _start_hotkey_mac(update_ui)
+    elif IS_WINDOWS:
+        _start_hotkey_windows(update_ui)
+
+# ── macOS: Carbon API (no Accessibility permission needed) ──
+
 _KEYCODE_MAP = {
     "space": 49, "return": 36, "tab": 48, "escape": 53,
     "a": 0, "b": 11, "c": 8, "d": 2, "e": 14, "f": 3, "g": 5,
@@ -275,7 +285,6 @@ _KEYCODE_MAP = {
     "f7": 98, "f8": 100, "f9": 101, "f10": 109, "f11": 103, "f12": 111,
 }
 
-# Carbon modifier flags
 _MODIFIER_MAP = {
     "alt": 0x0800, "option": 0x0800,
     "cmd": 0x0100, "command": 0x0100,
@@ -283,11 +292,7 @@ _MODIFIER_MAP = {
     "shift": 0x0200,
 }
 
-# Must keep references alive to prevent garbage collection
-_hotkey_refs = []
-
-def start_hotkey_listener(update_ui=None):
-    """Register global hotkey via Carbon API. No Accessibility permission needed."""
+def _start_hotkey_mac(update_ui=None):
     import ctypes
     from ctypes import c_void_p, c_uint32, c_int32, Structure, byref, CFUNCTYPE, POINTER
 
@@ -302,12 +307,7 @@ def start_hotkey_listener(update_ui=None):
     )
     carbon.GetApplicationEventTarget.restype = c_void_p
     carbon.InstallEventHandler.argtypes = [
-        c_void_p,
-        ctypes.c_void_p,
-        c_uint32,
-        POINTER(EventTypeSpec),
-        c_void_p,
-        POINTER(c_void_p),
+        c_void_p, ctypes.c_void_p, c_uint32, POINTER(EventTypeSpec), c_void_p, POINTER(c_void_p),
     ]
     carbon.InstallEventHandler.restype = c_int32
     carbon.RegisterEventHotKey.argtypes = [
@@ -320,28 +320,23 @@ def start_hotkey_listener(update_ui=None):
     def _on_hotkey(next_handler, event, user_data):
         log(">>> HOTKEY PRESSED <<<")
         toggle_recording(update_ui=update_ui)
-        return 0  # noErr
+        return 0
 
     handler_func = EventHandlerProc(_on_hotkey)
-    _hotkey_refs.append(handler_func)  # prevent GC
+    _hotkey_refs.append(handler_func)
 
-    kEventClassKeyboard = 0x6B657962  # 'keyb'
+    kEventClassKeyboard = 0x6B657962
     kEventHotKeyPressed = 5
     event_type = EventTypeSpec(kEventClassKeyboard, kEventHotKeyPressed)
     handler_ref = c_void_p()
 
     err = carbon.InstallEventHandler(
-        carbon.GetApplicationEventTarget(),
-        handler_func,
-        c_uint32(1),
-        byref(event_type),
-        None,
-        byref(handler_ref),
+        carbon.GetApplicationEventTarget(), handler_func,
+        c_uint32(1), byref(event_type), None, byref(handler_ref),
     )
     if err != 0:
         log(f"InstallEventHandler failed: {err}")
         return
-
     _hotkey_refs.append(handler_ref)
 
     mod_name = settings.get("hotkey_mod", "alt")
@@ -349,23 +344,68 @@ def start_hotkey_listener(update_ui=None):
     modifier = _MODIFIER_MAP.get(mod_name.lower(), 0x0800)
     keycode = _KEYCODE_MAP.get(key_name.lower(), 49)
 
-    hotkey_id = EventHotKeyID(0x51565F31, 1)  # 'QV_1'
+    hotkey_id = EventHotKeyID(0x51565F31, 1)
     hotkey_ref = c_void_p()
-
     err = carbon.RegisterEventHotKey(
-        c_uint32(keycode),
-        c_uint32(modifier),
-        hotkey_id,
-        carbon.GetApplicationEventTarget(),
-        c_uint32(0),
-        byref(hotkey_ref),
+        c_uint32(keycode), c_uint32(modifier), hotkey_id,
+        carbon.GetApplicationEventTarget(), c_uint32(0), byref(hotkey_ref),
     )
     if err != 0:
         log(f"RegisterEventHotKey failed: {err}")
         return
-
     _hotkey_refs.append(hotkey_ref)
     log(f"Carbon hotkey registered: {mod_name}+{key_name}")
+
+# ── Windows: pynput global hotkey ──
+
+def _start_hotkey_windows(update_ui=None):
+    from pynput import keyboard
+
+    mod_name = settings.get("hotkey_mod", "ctrl")
+    key_name = settings.get("hotkey_key", "space")
+
+    # Map modifier names to pynput keys
+    _WIN_MOD_MAP = {
+        "ctrl": keyboard.Key.ctrl_l, "control": keyboard.Key.ctrl_l,
+        "alt": keyboard.Key.alt_l, "option": keyboard.Key.alt_l,
+        "shift": keyboard.Key.shift_l,
+        "cmd": keyboard.Key.cmd, "command": keyboard.Key.cmd,
+    }
+
+    # Map key names to pynput keys
+    _WIN_KEY_MAP = {
+        "space": keyboard.Key.space, "return": keyboard.Key.enter,
+        "tab": keyboard.Key.tab, "escape": keyboard.Key.esc,
+    }
+    # Add F-keys
+    for i in range(1, 13):
+        _WIN_KEY_MAP[f"f{i}"] = getattr(keyboard.Key, f"f{i}")
+
+    mod_key = _WIN_MOD_MAP.get(mod_name.lower(), keyboard.Key.ctrl_l)
+    main_key = _WIN_KEY_MAP.get(key_name.lower())
+    if main_key is None:
+        # Single character key
+        try:
+            main_key = keyboard.KeyCode.from_char(key_name.lower())
+        except Exception:
+            main_key = keyboard.Key.space
+
+    pressed_keys = set()
+
+    def on_press(key):
+        pressed_keys.add(key)
+        if mod_key in pressed_keys and (key == main_key or key == main_key):
+            log(">>> HOTKEY PRESSED <<<")
+            toggle_recording(update_ui=update_ui)
+
+    def on_release(key):
+        pressed_keys.discard(key)
+
+    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+    listener.daemon = True
+    listener.start()
+    _hotkey_refs.append(listener)
+    log(f"pynput hotkey registered: {mod_name}+{key_name}")
 
 # ─── Load model ──────────────────────────────────────────────────────────────
 
