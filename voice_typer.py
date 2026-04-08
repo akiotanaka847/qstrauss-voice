@@ -596,32 +596,87 @@ elif IS_WINDOWS:
             self._root.update()
 
     def run_windows():
+        log("run_windows starting...")
+
+        # Create main tkinter root first
+        root = tk.Tk()
+        root.title("QStrauss Voice")
+        root.configure(bg="#1c2e1c")
+        root.resizable(False, False)
+
+        # Startup window — visible immediately
+        W, H = 400, 200
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        x = (sw - W) // 2
+        y = (sh - H) // 2
+        root.geometry(f"{W}x{H}+{x}+{y}")
+        root.attributes("-topmost", True)
+
+        tk.Label(root, text="QStrauss Voice", font=("Segoe UI", 22, "bold"),
+                 fg="white", bg="#1c2e1c").pack(pady=(30, 8))
+        startup_label = tk.Label(root, text="Cargando modelo...",
+                                 font=("Segoe UI", 12), fg="#66d966", bg="#1c2e1c")
+        startup_label.pack()
+        tk.Label(root, text="Esto puede tardar un momento la primera vez",
+                 font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c").pack(pady=(8, 0))
+
+        root.update()
+        log("Startup window shown")
+
+        # Start audio and model loading
         start_audio_stream()
-        threading.Thread(target=load_model, daemon=True).start()
 
-        overlay = WinOverlay()
+        def _load_and_notify():
+            load_model()
+            # Signal that model is ready
+            _pending["model_ready"] = True
 
-        # Status callback for UI updates (thread-safe via flag)
-        _pending = {"status": None}
+        threading.Thread(target=_load_and_notify, daemon=True).start()
+
+        # Overlay window (hidden until hotkey)
+        overlay_win = tk.Toplevel(root)
+        overlay_win.overrideredirect(True)
+        overlay_win.attributes("-topmost", True)
+        overlay_win.attributes("-alpha", 0.93)
+        overlay_win.configure(bg="#1c2e1c")
+        OW, OH = 360, 120
+        ox = (sw - OW) // 2
+        oy = int(sh * 0.3)
+        overlay_win.geometry(f"{OW}x{OH}+{ox}+{oy}")
+        tk.Label(overlay_win, text="QStrauss", font=("Segoe UI", 18, "bold"),
+                 fg="white", bg="#1c2e1c").pack(pady=(16, 4))
+        overlay_label = tk.Label(overlay_win, text="Escuchando...",
+                                 font=("Segoe UI", 12), fg="#66d966", bg="#1c2e1c")
+        overlay_label.pack()
+        overlay_hint = tk.Label(overlay_win, text="Ctrl+Space para detener",
+                                font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c")
+        overlay_hint.pack(pady=(4, 0))
+        overlay_win.withdraw()
+
+        class _Overlay:
+            def show(self, status="listening"):
+                text = "Escuchando..." if status == "listening" else "Transcribiendo..."
+                overlay_label.config(text=text)
+                overlay_win.deiconify()
+                overlay_win.lift()
+                overlay_win.attributes("-topmost", True)
+            def set_status(self, status):
+                text = "Escuchando..." if status == "listening" else "Transcribiendo..."
+                overlay_label.config(text=text)
+            def hide(self):
+                overlay_win.withdraw()
+
+        overlay = _Overlay()
+
+        # Status callback
+        _pending = {"status": None, "model_ready": False}
 
         def queue_status(s):
             _pending["status"] = s
 
-        def apply_status():
-            s = _pending["status"]
-            if s is None:
-                return
-            _pending["status"] = None
-            log(f"_apply_status: {s}")
-            if s == "recording":
-                overlay.show("listening")
-            elif s == "transcribing":
-                overlay.set_status("transcribing")
-            else:
-                overlay.hide()
-
         start_hotkey_listener(update_ui=queue_status)
-        log("Running in background. Press Ctrl+Space to record.")
+        log("Hotkey listener started")
 
         # System tray icon
         try:
@@ -640,7 +695,7 @@ elif IS_WINDOWS:
             tray = pystray.Icon(
                 "QStrauss Voice",
                 tray_image,
-                "QStrauss Voice — Ctrl+Space",
+                "QStrauss Voice - Ctrl+Space",
                 menu=pystray.Menu(pystray.MenuItem("Salir", on_quit)),
             )
             threading.Thread(target=tray.run, daemon=True).start()
@@ -648,14 +703,39 @@ elif IS_WINDOWS:
         except Exception as e:
             log(f"Tray icon error (non-fatal): {e}")
 
-        # Main loop — poll for status changes
-        try:
-            while True:
-                apply_status()
-                overlay.update()
-                time.sleep(0.05)
-        except KeyboardInterrupt:
-            pass
+        # Main loop
+        def poll():
+            # Check if model finished loading
+            if _pending["model_ready"]:
+                _pending["model_ready"] = False
+                startup_label.config(text="Listo! Presiona Ctrl+Space")
+                log("Model ready — updating startup window")
+                # Auto-hide startup window after 2 seconds
+                root.after(2000, root.withdraw)
+
+            # Apply recording status changes
+            s = _pending["status"]
+            if s is not None:
+                _pending["status"] = None
+                log(f"_apply_status: {s}")
+                if s == "recording":
+                    overlay.show("listening")
+                elif s == "transcribing":
+                    overlay.set_status("transcribing")
+                else:
+                    overlay.hide()
+
+            root.after(50, poll)
+
+        root.after(50, poll)
+
+        # Handle window close — hide to tray instead of quitting
+        def on_close():
+            root.withdraw()
+        root.protocol("WM_DELETE_WINDOW", on_close)
+
+        log("Entering main loop")
+        root.mainloop()
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
