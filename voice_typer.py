@@ -548,78 +548,26 @@ if IS_MAC:
 elif IS_WINDOWS:
     import tkinter as tk
 
-    class WinOverlay:
-        """Floating overlay for Windows using tkinter."""
-        def __init__(self):
-            self._root = tk.Tk()
-            self._root.withdraw()
-            self._win = tk.Toplevel(self._root)
-            self._win.overrideredirect(True)
-            self._win.attributes("-topmost", True)
-            self._win.attributes("-alpha", 0.93)
-            self._win.configure(bg="#1c2e1c")
-            W, H = 360, 120
-            sw = self._win.winfo_screenwidth()
-            sh = self._win.winfo_screenheight()
-            x = (sw - W) // 2
-            y = int(sh * 0.3)
-            self._win.geometry(f"{W}x{H}+{x}+{y}")
-            # Title
-            tk.Label(self._win, text="QStrauss", font=("Segoe UI", 18, "bold"),
-                     fg="white", bg="#1c2e1c").pack(pady=(16, 4))
-            # Status label
-            self._label = tk.Label(self._win, text="Escuchando...",
-                                   font=("Segoe UI", 12), fg="#66d966", bg="#1c2e1c")
-            self._label.pack()
-            # Hint
-            self._hint = tk.Label(self._win, text="Ctrl+Space para detener",
-                                  font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c")
-            self._hint.pack(pady=(4, 0))
-            self._win.withdraw()
-
-        def show(self, status="listening"):
-            text = "Escuchando..." if status == "listening" else "Transcribiendo..."
-            self._label.config(text=text)
-            self._win.deiconify()
-            self._win.lift()
-            self._win.attributes("-topmost", True)
-
-        def set_status(self, status):
-            text = "Escuchando..." if status == "listening" else "Transcribiendo..."
-            self._label.config(text=text)
-
-        def hide(self):
-            self._win.withdraw()
-
-        def update(self):
-            """Must be called periodically from main thread."""
-            self._root.update()
-
     def run_windows():
         log("run_windows starting...")
 
-        # Create main tkinter root first
+        # Create root — start HIDDEN, show after mainloop is running
         root = tk.Tk()
+        root.withdraw()
         root.title("QStrauss Voice")
         root.configure(bg="#1c2e1c")
         root.resizable(False, False)
 
-        # Set window icon (title bar + taskbar)
+        # Set window icon (.ico only — PNG PhotoImage can fail in --noconsole)
         ico_path = os.path.join(RESOURCES_DIR, "QStraussVoice.ico")
-        png_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
         if os.path.exists(ico_path):
             try:
-                root.iconbitmap(ico_path)
-            except Exception:
-                pass
-        if os.path.exists(png_path):
-            try:
-                _icon_img = tk.PhotoImage(file=png_path)
-                root.iconphoto(True, _icon_img)
-            except Exception:
-                pass
+                root.iconbitmap(default=ico_path)
+                log(f"Icon set: {ico_path}")
+            except Exception as e:
+                log(f"iconbitmap failed: {e}")
 
-        # Startup window — visible immediately
+        # Build startup UI while hidden
         W, H = 400, 200
         sw = root.winfo_screenwidth()
         sh = root.winfo_screenheight()
@@ -635,29 +583,9 @@ elif IS_WINDOWS:
         tk.Label(root, text="Esto puede tardar un momento la primera vez",
                  font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c").pack(pady=(8, 0))
 
-        # Force the window to appear on top and be visible
-        root.update_idletasks()
-        root.deiconify()
-        root.lift()
-        root.focus_force()
-        root.attributes("-topmost", True)
-        root.update()
-        # Remove topmost after showing so it doesn't block other windows
-        root.after(500, lambda: root.attributes("-topmost", False))
-        log("Startup window shown")
-
-        # Start audio and model loading
-        start_audio_stream()
-
-        def _load_and_notify():
-            load_model()
-            # Signal that model is ready
-            _pending["model_ready"] = True
-
-        threading.Thread(target=_load_and_notify, daemon=True).start()
-
         # Overlay window (hidden until hotkey)
         overlay_win = tk.Toplevel(root)
+        overlay_win.withdraw()
         overlay_win.overrideredirect(True)
         overlay_win.attributes("-topmost", True)
         overlay_win.attributes("-alpha", 0.93)
@@ -674,7 +602,6 @@ elif IS_WINDOWS:
         overlay_hint = tk.Label(overlay_win, text="Ctrl+Space para detener",
                                 font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c")
         overlay_hint.pack(pady=(4, 0))
-        overlay_win.withdraw()
 
         class _Overlay:
             def show(self, status="listening"):
@@ -697,54 +624,81 @@ elif IS_WINDOWS:
         def queue_status(s):
             _pending["status"] = s
 
-        start_hotkey_listener(update_ui=queue_status)
-        log("Hotkey listener started")
+        # ── This runs AFTER mainloop starts (scheduled via root.after) ──
+        def _init_after_mainloop():
+            log("_init_after_mainloop: showing startup window")
 
-        # System tray icon
-        try:
-            import pystray
-            from PIL import Image as PILImage
-            icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
-            if os.path.exists(icon_path):
-                tray_image = PILImage.open(icon_path).resize((64, 64))
-            else:
-                tray_image = PILImage.new("RGB", (64, 64), "#1c2e1c")
+            # Now show the startup window — mainloop is running
+            root.deiconify()
+            root.state("normal")
+            root.lift()
+            root.attributes("-topmost", True)
+            root.focus_force()
+            root.update()
+            root.after(1000, lambda: root.attributes("-topmost", False))
+            log("Startup window visible")
 
-            def on_show(icon, item):
-                root.deiconify()
-                root.lift()
-                root.focus_force()
+            # Start audio
+            try:
+                start_audio_stream()
+                log("Audio stream started")
+            except Exception as e:
+                log(f"Audio stream error: {e}")
 
-            def on_quit(icon, item):
-                icon.stop()
-                os._exit(0)
+            # Load model in background
+            def _load_and_notify():
+                load_model()
+                _pending["model_ready"] = True
 
-            hotkey_display = settings.get("hotkey_display", "Ctrl+Space")
-            tray = pystray.Icon(
-                "QStrauss Voice",
-                tray_image,
-                f"QStrauss Voice - {hotkey_display}",
-                menu=pystray.Menu(
-                    pystray.MenuItem("Mostrar", on_show, default=True),
-                    pystray.MenuItem("Salir", on_quit),
-                ),
-            )
-            threading.Thread(target=tray.run, daemon=True).start()
-            log("System tray icon created")
-        except Exception as e:
-            log(f"Tray icon error (non-fatal): {e}")
+            threading.Thread(target=_load_and_notify, daemon=True).start()
 
-        # Main loop
+            # Hotkey
+            start_hotkey_listener(update_ui=queue_status)
+            log("Hotkey listener started")
+
+            # System tray icon
+            try:
+                import pystray
+                from PIL import Image as PILImage
+                icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
+                if os.path.exists(icon_path):
+                    tray_image = PILImage.open(icon_path).resize((64, 64))
+                else:
+                    tray_image = PILImage.new("RGB", (64, 64), "#1c2e1c")
+
+                def on_show(icon, item):
+                    root.after(0, lambda: (root.deiconify(), root.state("normal"), root.lift(), root.focus_force()))
+
+                def on_quit(icon, item):
+                    icon.stop()
+                    os._exit(0)
+
+                hotkey_display = settings.get("hotkey_display", "Ctrl+Space")
+                tray = pystray.Icon(
+                    "QStrauss Voice",
+                    tray_image,
+                    f"QStrauss Voice - {hotkey_display}",
+                    menu=pystray.Menu(
+                        pystray.MenuItem("Mostrar", on_show, default=True),
+                        pystray.MenuItem("Salir", on_quit),
+                    ),
+                )
+                threading.Thread(target=tray.run, daemon=True).start()
+                log("System tray icon created")
+            except Exception as e:
+                log(f"Tray icon error (non-fatal): {e}")
+
+            # Start polling
+            poll()
+
+        # Main poll loop
         def poll():
-            # Check if model finished loading
             if _pending["model_ready"]:
                 _pending["model_ready"] = False
                 startup_label.config(text="Listo! Presiona Ctrl+Space")
-                log("Model ready — updating startup window")
-                # Auto-hide startup window after 2 seconds
+                log("Model ready — hiding startup in 2s")
                 root.after(2000, root.withdraw)
 
-            # Apply recording status changes
             s = _pending["status"]
             if s is not None:
                 _pending["status"] = None
@@ -758,14 +712,15 @@ elif IS_WINDOWS:
 
             root.after(50, poll)
 
-        root.after(50, poll)
-
         # Handle window close — hide to tray instead of quitting
         def on_close():
             root.withdraw()
         root.protocol("WM_DELETE_WINDOW", on_close)
 
-        log("Entering main loop")
+        # Schedule init AFTER mainloop starts — this is the key fix
+        root.after(100, _init_after_mainloop)
+
+        log("Entering mainloop")
         root.mainloop()
 
 # ─── Main ────────────────────────────────────────────────────────────────────
