@@ -604,6 +604,21 @@ elif IS_WINDOWS:
         root.configure(bg="#1c2e1c")
         root.resizable(False, False)
 
+        # Set window icon (title bar + taskbar)
+        ico_path = os.path.join(RESOURCES_DIR, "QStraussVoice.ico")
+        png_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
+        if os.path.exists(ico_path):
+            try:
+                root.iconbitmap(ico_path)
+            except Exception:
+                pass
+        if os.path.exists(png_path):
+            try:
+                _icon_img = tk.PhotoImage(file=png_path)
+                root.iconphoto(True, _icon_img)
+            except Exception:
+                pass
+
         # Startup window — visible immediately
         W, H = 400, 200
         sw = root.winfo_screenwidth()
@@ -611,7 +626,6 @@ elif IS_WINDOWS:
         x = (sw - W) // 2
         y = (sh - H) // 2
         root.geometry(f"{W}x{H}+{x}+{y}")
-        root.attributes("-topmost", True)
 
         tk.Label(root, text="QStrauss Voice", font=("Segoe UI", 22, "bold"),
                  fg="white", bg="#1c2e1c").pack(pady=(30, 8))
@@ -621,7 +635,15 @@ elif IS_WINDOWS:
         tk.Label(root, text="Esto puede tardar un momento la primera vez",
                  font=("Segoe UI", 9), fg="#5a7a5a", bg="#1c2e1c").pack(pady=(8, 0))
 
+        # Force the window to appear on top and be visible
+        root.update_idletasks()
+        root.deiconify()
+        root.lift()
+        root.focus_force()
+        root.attributes("-topmost", True)
         root.update()
+        # Remove topmost after showing so it doesn't block other windows
+        root.after(500, lambda: root.attributes("-topmost", False))
         log("Startup window shown")
 
         # Start audio and model loading
@@ -688,15 +710,24 @@ elif IS_WINDOWS:
             else:
                 tray_image = PILImage.new("RGB", (64, 64), "#1c2e1c")
 
+            def on_show(icon, item):
+                root.deiconify()
+                root.lift()
+                root.focus_force()
+
             def on_quit(icon, item):
                 icon.stop()
                 os._exit(0)
 
+            hotkey_display = settings.get("hotkey_display", "Ctrl+Space")
             tray = pystray.Icon(
                 "QStrauss Voice",
                 tray_image,
-                "QStrauss Voice - Ctrl+Space",
-                menu=pystray.Menu(pystray.MenuItem("Salir", on_quit)),
+                f"QStrauss Voice - {hotkey_display}",
+                menu=pystray.Menu(
+                    pystray.MenuItem("Mostrar", on_show, default=True),
+                    pystray.MenuItem("Salir", on_quit),
+                ),
             )
             threading.Thread(target=tray.run, daemon=True).start()
             log("System tray icon created")

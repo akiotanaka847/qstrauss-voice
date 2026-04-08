@@ -94,11 +94,23 @@ jobs:
           pip install faster-whisper sounddevice pyperclip pynput numpy scipy
           pip install pyinstaller Pillow pystray
 
+      - name: Generate Windows icon
+        run: |
+          python -c "
+          from PIL import Image
+          img = Image.open('resources/icon_1024.png').convert('RGBA')
+          sizes = [16, 32, 48, 64, 128, 256]
+          frames = [img.resize((s, s), Image.LANCZOS) for s in sizes]
+          frames[-1].save('resources/QStraussVoice.ico', format='ICO', append_images=frames[:-1])
+          print('ICO created')
+          "
+
       - name: Build .exe with PyInstaller
         run: |
           pyinstaller `
             --noconfirm --noconsole `
             --name "QStrauss Voice" `
+            --icon "resources/QStraussVoice.ico" `
             --add-data "dictionary.json;." `
             --add-data "resources;resources" `
             --hidden-import "faster_whisper" `
