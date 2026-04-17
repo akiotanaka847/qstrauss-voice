@@ -108,11 +108,12 @@ jobs:
       - name: Build .exe with PyInstaller
         run: |
           pyinstaller `
-            --noconfirm --noconsole `
+            --noconfirm --console `
             --name "QStrauss Voice" `
             --icon "resources/QStraussVoice.ico" `
             --add-data "dictionary.json;." `
             --add-data "resources;resources" `
+            --add-data "settings_window_win.py;." `
             --hidden-import "faster_whisper" `
             --hidden-import "ctranslate2" `
             --hidden-import "tokenizers" `

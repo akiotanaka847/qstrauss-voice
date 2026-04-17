@@ -147,6 +147,8 @@ class SettingsWindow:
             "base": "Whisper Base (Local)",
             "small": "Whisper Small (Local)",
             "medium": "Whisper Medium (Local)",
+            "turbo": "Whisper Turbo (Recomendado)",
+            "large-v3": "Whisper Large V3 (Máxima precisión)"
         }
         cfg["model_label"] = model_labels.get(
             cfg.get("whisper_model", "base"), "Whisper (Local)"

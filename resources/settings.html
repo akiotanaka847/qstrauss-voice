@@ -4,12 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  /*
+   * QStrauss Voice — Design System
+   * Navy: #0b1133 (bg) / #101a3a (surface) / #162048 (card)
+   * Accent: #00c896 (QStrauss teal-green — from qstrauss.com)
+   * Text: #ffffff (primary) / #8a9dc0 (secondary) / #3a4e72 (muted)
+   */
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-    background: #1a2b1a;
-    color: #e0e8e0;
+    background: #0b1133;
+    color: #e8edf5;
     -webkit-user-select: none;
     cursor: default;
     overflow-y: auto;
@@ -18,69 +25,74 @@
   /* ── Tabs ───────────────────────────────── */
   .tabs {
     display: flex;
-    border-bottom: 2px solid #263626;
+    border-bottom: 1px solid #1a2650;
     position: sticky; top: 0;
-    background: #1a2b1a;
+    background: #0b1133;
     z-index: 10;
   }
   .tab {
     flex: 1;
     padding: 13px 0;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    color: #6a7a6a;
+    color: #3a4e72;
     cursor: pointer;
     border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
+    margin-bottom: -1px;
+    letter-spacing: 0.2px;
     transition: color .2s, border-color .2s;
   }
-  .tab:hover { color: #8a9a8a; }
-  .tab.active { color: #4ade80; border-bottom-color: #4ade80; }
+  .tab:hover { color: #8a9dc0; }
+  .tab.active { color: #00c896; border-bottom-color: #00c896; }
 
   /* ── Logo ───────────────────────────────── */
   .logo {
     text-align: center;
-    padding: 28px 0 8px;
+    padding: 24px 0 8px;
   }
   .logo-text {
-    font-size: 26px;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
     color: #ffffff;
     letter-spacing: -0.5px;
   }
   .logo-sub {
     font-size: 11px;
-    color: #5a7a5a;
+    color: #00c896;
     margin-top: 4px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-weight: 500;
   }
 
   /* ── Content ────────────────────────────── */
-  .page { display: none; padding: 0 20px 30px; }
+  .page { display: none; padding: 0 18px 30px; }
   .page.active { display: block; }
 
   .section-title {
-    color: #4ade80;
-    font-size: 11px;
+    color: #3a4e72;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
     padding: 20px 0 8px;
   }
 
   .card {
-    background: #223322;
-    border-radius: 12px;
+    background: #101a3a;
+    border-radius: 10px;
     overflow: hidden;
+    border: 1px solid #1a2650;
   }
 
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 13px 16px;
-    border-bottom: 1px solid #2a3d2a;
-    min-height: 50px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #162048;
+    min-height: 48px;
   }
   .row:last-child { border-bottom: none; }
 
@@ -88,18 +100,19 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 14px;
+    font-size: 13.5px;
+    color: #c8d4e8;
   }
 
   .info-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px; height: 16px;
+    width: 15px; height: 15px;
     border-radius: 50%;
-    border: 1px solid #4a5a4a;
-    font-size: 10px;
-    color: #6a7a6a;
+    border: 1px solid #253060;
+    font-size: 9px;
+    color: #3a4e72;
     cursor: help;
     flex-shrink: 0;
   }
@@ -112,69 +125,69 @@
 
   /* ── Toggle switch ──────────────────────── */
   .toggle {
-    width: 44px; height: 24px;
-    background: #3a4a3a;
+    width: 42px; height: 24px;
+    background: #1a2650;
     border-radius: 12px;
     position: relative;
     cursor: pointer;
-    transition: background .2s;
+    transition: background .25s;
     flex-shrink: 0;
   }
-  .toggle.on { background: #4ade80; }
+  .toggle.on { background: #00c896; }
   .toggle::after {
     content: '';
-    width: 20px; height: 20px;
+    width: 18px; height: 18px;
     background: #fff;
     border-radius: 50%;
     position: absolute;
-    top: 2px; left: 2px;
-    transition: transform .2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    top: 3px; left: 3px;
+    transition: transform .25s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.4);
   }
-  .toggle.on::after { transform: translateX(20px); }
+  .toggle.on::after { transform: translateX(18px); }
 
   /* ── Key capture button ─────────────────── */
   .key-btn {
-    background: #3a4a3a;
-    color: #e0e8e0;
-    border: 1px solid #4a5a4a;
-    border-radius: 8px;
+    background: #162048;
+    color: #c8d4e8;
+    border: 1px solid #253060;
+    border-radius: 7px;
     padding: 5px 14px;
-    font-size: 14px;
+    font-size: 13px;
     font-family: inherit;
     cursor: pointer;
     min-width: 50px;
     text-align: center;
-    transition: border-color .2s;
+    transition: border-color .2s, color .2s;
   }
-  .key-btn:hover { border-color: #4ade80; }
+  .key-btn:hover { border-color: #00c896; color: #00c896; }
   .key-btn.capturing {
-    border-color: #4ade80;
-    color: #4ade80;
+    border-color: #00c896;
+    color: #00c896;
     animation: pulse 1s infinite;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: .5; }
+    50% { opacity: .45; }
   }
 
   .reset-btn {
     background: none;
     border: none;
-    color: #6a7a6a;
+    color: #3a4e72;
     font-size: 16px;
     cursor: pointer;
     padding: 4px;
     transition: color .2s;
   }
-  .reset-btn:hover { color: #4ade80; }
+  .reset-btn:hover { color: #00c896; }
 
   /* ── Select dropdown ────────────────────── */
   select {
-    background: #3a4a3a;
-    color: #e0e8e0;
-    border: 1px solid #4a5a4a;
-    border-radius: 8px;
+    background: #162048;
+    color: #c8d4e8;
+    border: 1px solid #253060;
+    border-radius: 7px;
     padding: 7px 28px 7px 12px;
     font-size: 13px;
     font-family: inherit;
@@ -182,33 +195,36 @@
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236a7a6a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233a4e72' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
+    transition: border-color .2s;
   }
-  select:focus { outline: none; border-color: #4ade80; }
+  select:focus { outline: none; border-color: #00c896; }
 
   /* ── Instructions page ──────────────────── */
   .instructions {
     padding: 10px 0;
-    line-height: 1.7;
+    line-height: 1.75;
     font-size: 13.5px;
-    color: #b0c0b0;
+    color: #6b82aa;
   }
   .instructions h3 {
-    color: #4ade80;
-    font-size: 13px;
+    color: #c8d4e8;
+    font-size: 12px;
     font-weight: 600;
-    margin: 18px 0 6px;
-    letter-spacing: 0.5px;
+    margin: 20px 0 6px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
   }
   .instructions h3:first-child { margin-top: 6px; }
   .instructions code {
-    background: #2a3d2a;
+    background: #162048;
     padding: 2px 7px;
     border-radius: 4px;
-    font-size: 12.5px;
-    color: #4ade80;
+    font-size: 12px;
+    color: #00c896;
+    border: 1px solid #1a2650;
   }
   .instructions ul {
     padding-left: 20px;
@@ -221,15 +237,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 13px 16px;
+    padding: 12px 16px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
+    color: #c8d4e8;
   }
   .collapsible-header .chevron {
     margin-left: auto;
-    font-size: 18px;
-    color: #6a7a6a;
+    font-size: 16px;
+    color: #3a4e72;
     transition: transform .2s;
   }
   .collapsible-header.open .chevron { transform: rotate(180deg); }
@@ -240,14 +257,15 @@
   }
   .collapsible-body.open { max-height: 600px; }
   .collapsible-icon {
-    width: 24px; height: 24px;
+    width: 22px; height: 22px;
     border-radius: 50%;
-    background: #2a3d2a;
+    background: #162048;
+    border: 1px solid #253060;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    color: #4ade80;
+    font-size: 11px;
+    color: #00c896;
     flex-shrink: 0;
   }
 
@@ -259,69 +277,69 @@
   }
   .stepper input {
     width: 48px;
-    background: #3a4a3a;
-    border: 1px solid #4a5a4a;
-    border-radius: 8px;
-    color: #e0e8e0;
+    background: #162048;
+    border: 1px solid #253060;
+    border-radius: 7px;
+    color: #c8d4e8;
     text-align: center;
     padding: 5px 4px;
-    font-size: 14px;
+    font-size: 13px;
     font-family: inherit;
     -moz-appearance: textfield;
   }
   .stepper input::-webkit-inner-spin-button,
   .stepper input::-webkit-outer-spin-button { opacity: 1; }
-  .stepper input:focus { outline: none; border-color: #4ade80; }
+  .stepper input:focus { outline: none; border-color: #00c896; }
   .stepper-label {
     font-size: 13px;
-    color: #7a8a7a;
+    color: #3a4e72;
   }
 
   /* ── Save button ────────────────────────── */
   .save-btn {
-    background: #3a4a3a;
-    color: #e0e8e0;
-    border: 1px solid #4a5a4a;
-    border-radius: 8px;
+    background: #162048;
+    color: #c8d4e8;
+    border: 1px solid #253060;
+    border-radius: 7px;
     padding: 6px 16px;
     font-size: 13px;
     font-family: inherit;
     cursor: pointer;
-    transition: border-color .2s, background .2s;
+    transition: border-color .2s, color .2s;
   }
-  .save-btn:hover { border-color: #4ade80; background: #2a3d2a; }
+  .save-btn:hover { border-color: #00c896; color: #00c896; }
 
   /* ── Status indicator ───────────────────── */
   .status-dot {
-    width: 8px; height: 8px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     display: inline-block;
     flex-shrink: 0;
   }
-  .status-dot.green { background: #4ade80; }
-  .status-dot.yellow { background: #facc15; }
-  .status-dot.gray { background: #6a7a6a; }
+  .status-dot.green { background: #00c896; box-shadow: 0 0 6px rgba(0,200,150,.5); }
+  .status-dot.yellow { background: #f0a830; }
+  .status-dot.gray { background: #3a4e72; }
 
   /* ── Credits text ───────────────────────── */
   .credits-text {
-    padding: 10px 16px 16px;
+    padding: 8px 16px 16px;
     font-size: 13px;
-    color: #7a8a7a;
-    line-height: 1.6;
+    color: #3a4e72;
+    line-height: 1.65;
   }
 
   /* ── Footer status bar ──────────────────── */
   .footer-bar {
     position: sticky;
     bottom: 0;
-    background: #162216;
-    border-top: 1px solid #263626;
+    background: #070e26;
+    border-top: 1px solid #101a3a;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 8px 16px;
     font-size: 11px;
-    color: #5a6a5a;
+    color: #3a4e72;
     z-index: 10;
   }
   .footer-bar-left {
@@ -335,13 +353,13 @@
     gap: 12px;
   }
   .footer-bar a {
-    color: #6a7a6a;
+    color: #3a4e72;
     text-decoration: none;
     cursor: pointer;
     transition: color .2s;
   }
-  .footer-bar a:hover { color: #4ade80; }
-  .footer-bar .version { color: #4ade80; }
+  .footer-bar a:hover { color: #00c896; }
+  .footer-bar .version { color: #00c896; }
 </style>
 </head>
 <body>
@@ -357,7 +375,7 @@
   <img src="icon_1024.png" alt="QStrauss Voice"
        style="width:64px; height:64px; border-radius:14px; margin-bottom:8px; box-shadow: 0 2px 12px rgba(0,0,0,.3);">
   <div class="logo-text">QStrauss Voice</div>
-  <div class="logo-sub">Dictado local con IA</div>
+  <div class="logo-sub">Voice · IA Local</div>
 </div>
 
 <!-- ═══ Configuration Page ═══ -->
@@ -402,9 +420,11 @@
       <div class="row-right">
         <select id="whisper-model" onchange="setSetting('whisper_model', this.value)">
           <option value="tiny">tiny (r&aacute;pido)</option>
-          <option value="base" selected>base (recomendado)</option>
+          <option value="base">base</option>
           <option value="small">small (preciso)</option>
           <option value="medium">medium (muy preciso)</option>
+          <option value="turbo" selected>turbo (recomendado)</option>
+          <option value="large-v3">large-v3 (m&aacute;xima precisi&oacute;n)</option>
         </select>
       </div>
     </div>
@@ -433,7 +453,7 @@
   <div class="card">
     <div class="row">
       <div class="row-left">Correcciones activas</div>
-      <div class="row-right"><span id="dict-count" style="color:#6a7a6a">&mdash;</span></div>
+      <div class="row-right"><span id="dict-count" style="color:#3a4e72">&mdash;</span></div>
     </div>
     <div class="row">
       <div class="row-left">Recargar Diccionario <span class="info-icon" title="Recarga dictionary.json sin reiniciar">i</span></div>
@@ -512,7 +532,7 @@
         <span class="chevron">&#x2303;</span>
       </div>
       <div class="collapsible-body">
-        <div class="section-title" style="padding-left:16px">ACERCA DE</div>
+        <div class="section-title" style="padding-left:16px; padding-top:12px">ACERCA DE</div>
         <div style="padding: 0 0 4px;">
           <div class="row">
             <div class="row-left">Idioma de la aplicaci&oacute;n <span class="info-icon" title="Idioma de la interfaz">i</span></div>
@@ -525,7 +545,7 @@
           </div>
           <div class="row">
             <div class="row-left">Versi&oacute;n <span class="info-icon" title="Versi&oacute;n actual de QStrauss Voice">i</span></div>
-            <div class="row-right"><span style="color:#7a8a7a; font-family: 'SF Mono', monospace; font-size: 13px;">v1.0.0</span></div>
+            <div class="row-right"><span style="color:#3a4e72; font-family: 'SF Mono', monospace; font-size: 13px;">v1.0.0</span></div>
           </div>
         </div>
 
