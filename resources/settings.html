@@ -14,7 +14,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
     background: #0b1133;
     color: #e8edf5;
     -webkit-user-select: none;
@@ -375,7 +375,7 @@
   <img src="icon_1024.png" alt="QStrauss Voice"
        style="width:64px; height:64px; border-radius:14px; margin-bottom:8px; box-shadow: 0 2px 12px rgba(0,0,0,.3);">
   <div class="logo-text">QStrauss Voice</div>
-  <div class="logo-sub">Voice · IA Local</div>
+  <div class="logo-sub">Voice &middot; IA Local</div>
 </div>
 
 <!-- ═══ Configuration Page ═══ -->
@@ -570,28 +570,14 @@
   <div class="instructions">
     <h3>C&oacute;mo usar QStrauss Voice</h3>
     <ul>
-      <li>Presiona <code>&#x2325; Space</code> (Option + Space) para comenzar a grabar</li>
-      <li>Habla normalmente — el audio se procesa 100% local</li>
-      <li>Presiona <code>&#x2325; Space</code> de nuevo para detener y transcribir</li>
+      <li>Presiona el atajo (por defecto <code>Ctrl + Space</code> en Windows, <code>&#x2325; Space</code> en Mac)</li>
+      <li>Habla normalmente &mdash; el audio se procesa 100% local</li>
+      <li>Presiona el atajo de nuevo para detener y transcribir</li>
       <li>El texto se pega autom&aacute;ticamente donde tengas el cursor</li>
-    </ul>
-
-    <h3>Atajos de teclado</h3>
-    <ul>
-      <li><code>&#x2325; Space</code> &mdash; Iniciar / detener grabaci&oacute;n</li>
-      <li><code>&#x2325; L</code> &mdash; Cambiar idioma</li>
-      <li><code>&#x2325; R</code> &mdash; Recargar diccionario</li>
     </ul>
 
     <h3>Diccionario personalizado</h3>
     <p>Edita <code>dictionary.json</code> para agregar correcciones autom&aacute;ticas (ej: "work fron" &rarr; "Workfront") y hints que mejoran la precisi&oacute;n del modelo.</p>
-
-    <h3>Permisos necesarios</h3>
-    <ul>
-      <li><strong>Micr&oacute;fono</strong> &mdash; Para capturar audio</li>
-      <li><strong>Accesibilidad</strong> &mdash; Para el atajo de teclado global y el pegado autom&aacute;tico</li>
-    </ul>
-    <p style="margin-top:8px">Configura en: <code>System Settings &rarr; Privacy &amp; Security</code></p>
 
     <h3>Privacidad</h3>
     <p>Todo el procesamiento es local. Tu audio <strong>nunca</strong> sale de tu computadora. Se usa el modelo Whisper de OpenAI corriendo directamente en tu CPU.</p>
@@ -602,7 +588,7 @@
 <div class="footer-bar">
   <div class="footer-bar-left">
     <span class="status-dot yellow" id="model-dot"></span>
-    <span id="model-status">Cargando modelo…</span>
+    <span id="model-status">Cargando modelo&hellip;</span>
   </div>
   <div class="footer-bar-right">
     <a onclick="checkUpdates()">Buscar actualizaciones</a>
@@ -626,15 +612,19 @@
     setSetting(key, el.classList.contains('on'));
   }
 
+  // ── Bridge: Mac WKWebView or Windows pywebview ──
+  function _bridge(data) {
+    var json = JSON.stringify(data);
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.settings) {
+      window.webkit.messageHandlers.settings.postMessage(json);
+    } else if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.on_message(json);
+    }
+  }
+
   // ── Send setting to Python ──
   function setSetting(key, value) {
-    try {
-      window.webkit.messageHandlers.settings.postMessage(
-        JSON.stringify({ action: 'set', key: key, value: value })
-      );
-    } catch (e) {
-      console.log('Bridge not available:', key, value);
-    }
+    _bridge({ action: 'set', key: key, value: value });
   }
 
   // ── Hotkey capture ──
@@ -647,43 +637,43 @@
     btn.textContent = 'Presiona tecla…';
     document.addEventListener('keydown', function handler(e) {
       e.preventDefault();
-      let parts = [];
-      if (e.ctrlKey) parts.push('Ctrl');
-      if (e.altKey) parts.push('\u2325');
-      if (e.metaKey) parts.push('\u2318');
-      if (e.shiftKey) parts.push('\u21e7');
-      if (e.key && !['Control','Alt','Meta','Shift'].includes(e.key)) {
-        parts.push(e.key === ' ' ? 'Space' : e.key.toUpperCase());
-      }
-      if (parts.length > 1 || (!e.ctrlKey && !e.altKey && !e.metaKey)) {
-        btn.textContent = parts.join(' + ') || '\u2325 Space';
-        btn.classList.remove('capturing');
-        capturing = false;
-        document.removeEventListener('keydown', handler);
-        setSetting('hotkey_display', btn.textContent);
-      }
+      const key = e.key;
+      if (!key || ['Control','Alt','Meta','Shift'].includes(key)) return;
+      let parts = [], mod = null;
+      if (e.ctrlKey)  { parts.push('Ctrl');  mod = 'ctrl'; }
+      if (e.altKey)   { parts.push('⌥'); mod = mod || 'alt'; }
+      if (e.metaKey)  { parts.push('⌘'); mod = mod || 'cmd'; }
+      if (e.shiftKey) { parts.push('⇧'); mod = mod || 'shift'; }
+      if (!mod) mod = 'ctrl';
+      const keyName = key === ' ' ? 'space' : key.toLowerCase();
+      parts.push(key === ' ' ? 'Space' : key.toUpperCase());
+      const display = parts.join(' + ');
+      btn.textContent = display;
+      btn.classList.remove('capturing');
+      capturing = false;
+      document.removeEventListener('keydown', handler);
+      _bridge({ action: 'set', key: 'hotkey_mod',     value: mod });
+      _bridge({ action: 'set', key: 'hotkey_key',     value: keyName });
+      _bridge({ action: 'set', key: 'hotkey_display', value: display });
     });
   }
 
   function resetHotkey() {
-    document.getElementById('hotkey-btn').textContent = '\u2325 Space';
-    setSetting('hotkey_display', '\u2325 Space');
+    var isWin = navigator.platform.indexOf('Win') >= 0;
+    var display = isWin ? 'Ctrl + Space' : '⌥ Space';
+    var mod     = isWin ? 'ctrl' : 'alt';
+    document.getElementById('hotkey-btn').textContent = display;
+    _bridge({ action: 'set', key: 'hotkey_mod',     value: mod });
+    _bridge({ action: 'set', key: 'hotkey_key',     value: 'space' });
+    _bridge({ action: 'set', key: 'hotkey_display', value: display });
   }
 
   function refreshMics() {
-    try {
-      window.webkit.messageHandlers.settings.postMessage(
-        JSON.stringify({ action: 'refresh_mics' })
-      );
-    } catch(e) {}
+    _bridge({ action: 'refresh_mics' });
   }
 
   function reloadDict() {
-    try {
-      window.webkit.messageHandlers.settings.postMessage(
-        JSON.stringify({ action: 'reload_dict' })
-      );
-    } catch(e) {}
+    _bridge({ action: 'reload_dict' });
   }
 
   // ── Collapsible sections ──
@@ -711,13 +701,12 @@
     const dot = document.getElementById('model-dot');
     const text = document.getElementById('model-status');
     if (!dot || !text) return;
-    dot.className = 'status-dot ' + status;  // green, yellow, gray
+    dot.className = 'status-dot ' + status;
     text.textContent = label;
   }
 
   // ── Called from Python to load current settings ──
   function loadSettings(cfg) {
-    // General
     setToggle('push-to-talk', cfg.push_to_talk);
     setToggle('trailing-space', cfg.trailing_space !== false);
 
@@ -727,20 +716,16 @@
     if (cfg.hotkey_display) document.getElementById('hotkey-btn').textContent = cfg.hotkey_display;
     if (cfg.dict_count !== undefined) document.getElementById('dict-count').textContent = cfg.dict_count + ' correcciones';
 
-    // Aplicación
     setToggle('start-hidden', cfg.start_hidden);
     setToggle('launch-at-login', cfg.launch_at_login);
     if (cfg.overlay_position) document.getElementById('overlay-position').value = cfg.overlay_position;
     if (cfg.memory_timeout !== undefined) document.getElementById('memory-mgmt').value = String(cfg.memory_timeout);
 
-    // Historial
     if (cfg.history_limit) document.getElementById('history-limit').value = cfg.history_limit;
     if (cfg.history_retention) document.getElementById('history-retention').value = cfg.history_retention;
 
-    // Acerca de
     if (cfg.app_language) document.getElementById('app-language').value = cfg.app_language;
 
-    // Microphones
     if (cfg.microphones) {
       const sel = document.getElementById('microphone');
       sel.innerHTML = '';
@@ -753,9 +738,8 @@
       });
     }
 
-    // Model status
     if (cfg.model_ready) {
-      updateModelStatus('green', cfg.model_label || 'Whisper Base (Local)');
+      updateModelStatus('green', cfg.model_label || 'Whisper (Local)');
     } else {
       updateModelStatus('yellow', 'Cargando modelo…');
     }

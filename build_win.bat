@@ -13,7 +13,7 @@ if not exist ".venv" (
 
 call .venv\Scripts\activate.bat
 
-pip install pyinstaller pystray Pillow -q
+pip install pyinstaller pystray Pillow pywebview -q
 
 echo Building .exe...
 
@@ -33,6 +33,8 @@ pyinstaller ^
   --hidden-import "pynput.keyboard._win32" ^
   --hidden-import "pynput.mouse._win32" ^
   --hidden-import "pystray._win32" ^
+  --hidden-import "webview" ^
+  --collect-all "webview" ^
   --collect-all "faster_whisper" ^
   --collect-all "ctranslate2" ^
   voice_typer.py

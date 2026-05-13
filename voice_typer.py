@@ -32,12 +32,12 @@ SAMPLE_RATE     = 16000
 # ─── Settings ────────────────────────────────────────────────────────────────
 
 DEFAULT_SETTINGS = {
-    "whisper_model": "base",
+    "whisper_model": "turbo",
     "language": "auto",
     "microphone": "default",
     "hotkey_mod": "alt" if IS_MAC else "ctrl",
     "hotkey_key": "space",
-    "hotkey_display": "⌥ Space" if IS_MAC else "Ctrl+Space",
+    "hotkey_display": "⌥ Space" if IS_MAC else "Ctrl + Space",
     "trailing_space": True,
     "paste_mode": "clipboard_paste",
 }
@@ -203,7 +203,7 @@ def stop_and_transcribe(update_ui=None):
         segs, info = state["model"].transcribe(
             tmp.name,
             language=current_language(),
-            beam_size=5,
+            beam_size=1,
             vad_filter=True,
             initial_prompt=state["initial_prompt"] or None,
         )
@@ -364,39 +364,42 @@ def _start_hotkey_windows(update_ui=None):
     mod_name = settings.get("hotkey_mod", "ctrl")
     key_name = settings.get("hotkey_key", "space")
 
-    # Map modifier names to pynput keys
     _WIN_MOD_MAP = {
-        "ctrl": keyboard.Key.ctrl_l, "control": keyboard.Key.ctrl_l,
-        "alt": keyboard.Key.alt_l, "option": keyboard.Key.alt_l,
-        "shift": keyboard.Key.shift_l,
-        "cmd": keyboard.Key.cmd, "command": keyboard.Key.cmd,
+        "ctrl": (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r),
+        "control": (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r),
+        "alt": (keyboard.Key.alt_l, keyboard.Key.alt_r),
+        "option": (keyboard.Key.alt_l, keyboard.Key.alt_r),
+        "shift": (keyboard.Key.shift_l, keyboard.Key.shift_r),
+        "cmd": (keyboard.Key.cmd,), "command": (keyboard.Key.cmd,),
     }
 
-    # Map key names to pynput keys
     _WIN_KEY_MAP = {
         "space": keyboard.Key.space, "return": keyboard.Key.enter,
         "tab": keyboard.Key.tab, "escape": keyboard.Key.esc,
     }
-    # Add F-keys
     for i in range(1, 13):
         _WIN_KEY_MAP[f"f{i}"] = getattr(keyboard.Key, f"f{i}")
 
-    mod_key = _WIN_MOD_MAP.get(mod_name.lower(), keyboard.Key.ctrl_l)
+    mod_keys = _WIN_MOD_MAP.get(mod_name.lower(), (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r))
     main_key = _WIN_KEY_MAP.get(key_name.lower())
     if main_key is None:
-        # Single character key
         try:
             main_key = keyboard.KeyCode.from_char(key_name.lower())
         except Exception:
             main_key = keyboard.Key.space
 
     pressed_keys = set()
+    _last_fire = [0.0]
 
     def on_press(key):
         pressed_keys.add(key)
-        if mod_key in pressed_keys and (key == main_key or key == main_key):
-            log(">>> HOTKEY PRESSED <<<")
-            toggle_recording(update_ui=update_ui)
+        mod_held = any(mk in pressed_keys for mk in mod_keys)
+        if mod_held and key == main_key:
+            now = time.time()
+            if now - _last_fire[0] > 0.4:   # debounce 400 ms
+                _last_fire[0] = now
+                log(">>> HOTKEY PRESSED <<<")
+                toggle_recording(update_ui=update_ui)
 
     def on_release(key):
         pressed_keys.discard(key)
@@ -542,65 +545,33 @@ if IS_MAC:
         app.run()
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Windows — Invisible background app
+#  Windows — pywebview-based app (same HTML/CSS as Mac)
 # ══════════════════════════════════════════════════════════════════════════════
 
 elif IS_WINDOWS:
-    import tkinter as tk
     import ctypes
-    from settings_window_win import SettingsWindowWin
+    from settings_window_win import SettingsApi
 
     def _hide_console():
-        """Hide the console window. We build with --console (not --noconsole)
-        because pythonw.exe breaks tkinter window rendering on many systems.
-        Instead we hide the console immediately via Win32 API."""
         try:
             hwnd = ctypes.windll.kernel32.GetConsoleWindow()
             if hwnd:
-                ctypes.windll.user32.ShowWindow(hwnd, 0)  # SW_HIDE
-                log("Console window hidden")
-        except Exception as e:
-            log(f"Hide console failed (non-fatal): {e}")
+                ctypes.windll.user32.ShowWindow(hwnd, 0)
+        except Exception:
+            pass
 
     def run_windows():
+        import webview
+
         log("run_windows starting...")
         _hide_console()
 
-        # Create root window — normal visible creation
-        root = tk.Tk()
-        root.title("QStrauss Voice")
-        root.configure(bg="#0b1133")
-        root.resizable(False, False)
+        # Screen size via Win32 (no tkinter needed)
+        ctypes.windll.user32.SetProcessDPIAware()
+        sw = ctypes.windll.user32.GetSystemMetrics(0)
+        sh = ctypes.windll.user32.GetSystemMetrics(1)
 
-        # Set window icon (.ico only — PNG PhotoImage can fail in --noconsole)
-        ico_path = os.path.join(RESOURCES_DIR, "QStraussVoice.ico")
-        if os.path.exists(ico_path):
-            try:
-                root.iconbitmap(default=ico_path)
-                log(f"Icon set: {ico_path}")
-            except Exception as e:
-                log(f"iconbitmap failed: {e}")
-
-        # Startup window — show immediately (console mode = tkinter works)
-        W, H = 400, 200
-        sw = root.winfo_screenwidth()
-        sh = root.winfo_screenheight()
-        x = (sw - W) // 2
-        y = (sh - H) // 2
-        root.geometry(f"{W}x{H}+{x}+{y}")
-        root.attributes("-topmost", True)
-
-        tk.Label(root, text="QStrauss Voice", font=("Segoe UI", 22, "bold"),
-                 fg="white", bg="#0b1133").pack(pady=(30, 8))
-        startup_label = tk.Label(root, text="Cargando modelo...",
-                                 font=("Segoe UI", 12), fg="#00c896", bg="#0b1133")
-        startup_label.pack()
-        tk.Label(root, text="Esto puede tardar un momento la primera vez",
-                 font=("Segoe UI", 9), fg="#3a4e72", bg="#0b1133").pack(pady=(8, 0))
-
-        root.update()
-        root.after(1000, lambda: root.attributes("-topmost", False))
-        log("Startup window shown")
+        _pending = {"status": None, "model_ready": False}
 
         def _on_setting_changed(key, value):
             global settings
@@ -609,195 +580,177 @@ elif IS_WINDOWS:
                 state["model"] = None
                 threading.Thread(target=load_model, daemon=True).start()
 
-        settings_win = SettingsWindowWin(root, on_setting_changed=_on_setting_changed, on_reload_dict=reload_dictionary)
+        api = SettingsApi(
+            on_setting_changed=_on_setting_changed,
+            on_reload_dict=reload_dictionary,
+        )
 
-        # Start audio stream
-        start_audio_stream()
+        SETTINGS_HTML = os.path.join(RESOURCES_DIR, "settings.html")
 
-        # Load model in background
-        _pending = {"status": None, "model_ready": False}
+        # Overlay HTML — transparent window with rounded navy card (same look as Mac)
+        OW, OH = 320, 120
+        OVERLAY_HTML = """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:320px;height:120px;background:transparent;overflow:hidden}
+.card{
+  position:fixed;inset:0;
+  background:rgba(11,17,51,0.96);
+  border-radius:18px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.border-line{position:absolute;top:0;left:32px;right:32px;height:1.5px;background:#00c896;border-radius:1px}
+.title{font-family:'Segoe UI',sans-serif;font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px}
+.title span{color:#00c896;font-weight:400}
+.hint{font-family:'Segoe UI',sans-serif;font-size:9px;color:#3a4e72;margin-top:1px}
+</style></head><body>
+<div class="card">
+  <div class="border-line"></div>
+  <div class="title">QStrauss<span> Voice</span></div>
+  <canvas id="c" width="280" height="36"></canvas>
+  <div class="hint" id="hint">Presiona el atajo para detener</div>
+</div>
+<script>
+var status='listening',phase=0;
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+function draw(){
+  ctx.clearRect(0,0,280,36);
+  var cy=18;
+  if(status==='listening'){
+    for(var i=0;i<18;i++){
+      var dy=Math.sin(phase*.10+i*.38)*5,al=.5+.5*Math.abs(Math.sin(phase*.08+i*.3));
+      ctx.fillStyle='rgba(0,200,150,'+al+')';
+      ctx.beginPath();ctx.arc(14+i*(252/17),cy+dy,3.5,0,Math.PI*2);ctx.fill();
+    }
+  }else{
+    for(var i=0;i<3;i++){
+      var ph=i*(Math.PI*2/3),dy=Math.sin(phase*.14+ph)*6,al=.5+.5*Math.abs(Math.sin(phase*.14+ph));
+      ctx.fillStyle='rgba(0,200,150,'+al+')';
+      ctx.beginPath();ctx.arc(140+(i-1)*20,cy+dy,5,0,Math.PI*2);ctx.fill();
+    }
+  }
+  phase++;requestAnimationFrame(draw);
+}
+draw();
+function setStatus(s){
+  status=s;
+  document.getElementById('hint').textContent=s==='listening'?'Presiona el atajo para detener':'Un momento…';
+}
+</script></body></html>"""
 
-        def _load_and_notify():
-            load_model()
-            _pending["model_ready"] = True
-
-        threading.Thread(target=_load_and_notify, daemon=True).start()
-
-        # ── Overlay window — QStrauss brand: navy + teal ────────────────────
-        BG     = "#0b1133"   # Navy
-        TEAL   = "#00c896"   # QStrauss teal
-        MUTED  = "#3a4e72"   # Blue-gray hint
-
-        overlay_win = tk.Toplevel(root)
-        overlay_win.withdraw()
-        overlay_win.overrideredirect(True)
-        overlay_win.attributes("-topmost", True)
-        overlay_win.attributes("-alpha", 0.96)
-        overlay_win.configure(bg=BG)
-        OW, OH = 360, 148
         ox = (sw - OW) // 2
-        oy = int(sh * 0.65)
-        overlay_win.geometry(f"{OW}x{OH}+{ox}+{oy}")
+        oy = int(sh * 0.72)
 
-        # Teal top border line (1px Canvas)
-        border_canvas = tk.Canvas(overlay_win, height=2, bg=BG, highlightthickness=0)
-        border_canvas.pack(fill=tk.X)
-        border_canvas.create_line(36, 1, OW - 36, 1, fill=TEAL, width=1)
+        # Settings window starts hidden — shown only after HTML page is loaded
+        settings_win = webview.create_window(
+            "QStrauss Voice",
+            SETTINGS_HTML,
+            width=500, height=720,
+            resizable=False,
+            js_api=api,
+            hidden=True,
+        )
+        api._win = settings_win
 
-        # Title: "QStrauss" white + " Voice" teal
-        title_frame = tk.Frame(overlay_win, bg=BG)
-        title_frame.pack(pady=(8, 0))
-        tk.Label(title_frame, text="QStrauss", font=("Segoe UI", 17, "bold"),
-                 fg="white", bg=BG).pack(side=tk.LEFT)
-        tk.Label(title_frame, text=" Voice", font=("Segoe UI", 17),
-                 fg=TEAL, bg=BG).pack(side=tk.LEFT)
+        overlay_win = webview.create_window(
+            "QStrauss Voice Overlay",
+            html=OVERLAY_HTML,
+            x=ox, y=oy,
+            width=OW, height=OH,
+            frameless=True,
+            transparent=True,
+            on_top=True,
+            hidden=True,
+        )
 
-        # Animated dots canvas
-        dot_canvas = tk.Canvas(overlay_win, width=OW, height=44, bg=BG, highlightthickness=0)
-        dot_canvas.pack()
+        # Hide instead of close so the app keeps running via tray
+        def _on_settings_closing():
+            settings_win.hide()
+            return False
+        settings_win.events.closing += _on_settings_closing
 
-        # Hint label
-        hint_label = tk.Label(overlay_win, text="Presiona el atajo para detener",
-                               font=("Segoe UI", 9), fg=MUTED, bg=BG)
-        hint_label.pack(pady=(0, 10))
+        # Show settings only once the page has fully loaded
+        _settings_loaded = {"done": False}
+        def _on_settings_loaded():
+            if not _settings_loaded["done"]:
+                _settings_loaded["done"] = True
+                api.inject_settings()
+                if not settings.get("start_hidden", False):
+                    settings_win.show()
+        settings_win.events.loaded += _on_settings_loaded
 
-        # ── Dot animation ────────────────────────────────────────────────────
-        _anim = {"phase": 0, "status": "listening", "job": None}
-        N_DOTS = 20
-        DOT_R  = 4
+        def on_start():
+            log("webview on_start")
 
-        def _draw_dots():
-            dot_canvas.delete("all")
-            phase   = _anim["phase"]
-            status  = _anim["status"]
-            cx_area = OW - 72
-            gap     = cx_area / (N_DOTS - 1) if status == "listening" else 0
-            cy0     = 22
+            start_audio_stream()
 
-            if status == "listening":
-                for i in range(N_DOTS):
-                    import math
-                    dy    = math.sin(phase * 0.10 + i * 0.38) * 6
-                    alpha = 0.5 + 0.5 * abs(math.sin(phase * 0.08 + i * 0.3))
-                    # Approximate alpha with color blend toward BG
-                    r_hex = int(0 + (11  - 0)  * (1 - alpha))
-                    g_hex = int(200 + (17  - 200) * (1 - alpha))
-                    b_hex = int(150 + (51  - 150) * (1 - alpha))
-                    color = f"#{r_hex:02x}{g_hex:02x}{b_hex:02x}"
-                    cx = 36 + i * gap
-                    cy = cy0 + dy
-                    dot_canvas.create_oval(cx-DOT_R, cy-DOT_R, cx+DOT_R, cy+DOT_R, fill=color, outline="")
-            else:
-                # 3 bouncing dots for transcribing
-                import math
-                for i in range(3):
-                    phase_off = i * (3.14159 * 2 / 3)
-                    dy    = math.sin(phase * 0.14 + phase_off) * 7
-                    alpha = 0.5 + 0.5 * abs(math.sin(phase * 0.14 + phase_off))
-                    r_hex = int(0   * alpha)
-                    g_hex = int(200 * alpha)
-                    b_hex = int(150 * alpha)
-                    color = f"#{r_hex:02x}{g_hex:02x}{b_hex:02x}"
-                    cx = OW // 2 + (i - 1) * 22
-                    cy = cy0 + dy
-                    dot_canvas.create_oval(cx-6, cy-6, cx+6, cy+6, fill=color, outline="")
+            def _load_and_notify():
+                load_model()
+                _pending["model_ready"] = True
+            threading.Thread(target=_load_and_notify, daemon=True).start()
 
-            _anim["phase"] += 1
-            if overlay_win.winfo_ismapped():
-                _anim["job"] = overlay_win.after(40, _draw_dots)
+            def queue_status(s):
+                _pending["status"] = s
+            start_hotkey_listener(update_ui=queue_status)
 
-        class _Overlay:
-            def show(self, status="listening"):
-                _anim["status"] = status
-                hint_label.config(text="Presiona el atajo para detener" if status == "listening" else "Un momento…")
-                overlay_win.deiconify()
-                overlay_win.lift()
-                overlay_win.attributes("-topmost", True)
-                if _anim["job"] is None:
-                    _draw_dots()
-            def set_status(self, status):
-                _anim["status"] = status
-                hint_label.config(text="Un momento…" if status == "transcribing" else "Presiona el atajo para detener")
-            def hide(self):
-                if _anim["job"]:
-                    overlay_win.after_cancel(_anim["job"])
-                    _anim["job"] = None
-                overlay_win.withdraw()
+            # Poll thread: model ready + overlay status
+            def _poll():
+                while True:
+                    if _pending["model_ready"]:
+                        _pending["model_ready"] = False
+                        log("Model ready")
+                        api.inject_settings(extra={"model_ready": True})
 
-        overlay = _Overlay()
+                    s = _pending["status"]
+                    if s is not None:
+                        _pending["status"] = None
+                        try:
+                            if s == "recording":
+                                overlay_win.show()
+                                overlay_win.evaluate_js("setStatus('listening')")
+                            elif s == "transcribing":
+                                overlay_win.evaluate_js("setStatus('transcribing')")
+                            else:
+                                overlay_win.hide()
+                        except Exception as e:
+                            log(f"overlay error: {e}")
+                    time.sleep(0.05)
+            threading.Thread(target=_poll, daemon=True).start()
 
-        def queue_status(s):
-            _pending["status"] = s
+            # System tray
+            try:
+                import pystray
+                from PIL import Image as PILImage
+                icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
+                tray_img = (PILImage.open(icon_path).resize((64, 64))
+                            if os.path.exists(icon_path)
+                            else PILImage.new("RGB", (64, 64), "#0b1133"))
 
-        start_hotkey_listener(update_ui=queue_status)
-        log("Hotkey listener started")
-
-        # System tray icon
-        try:
-            import pystray
-            from PIL import Image as PILImage
-            icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
-            if os.path.exists(icon_path):
-                tray_image = PILImage.open(icon_path).resize((64, 64))
-            else:
-                tray_image = PILImage.new("RGB", (64, 64), "#1c2e1c")
-
-            def on_show(icon, item):
-                root.after(0, settings_win.show)  # Must run on main tkinter thread
-
-            def on_quit(icon, item):
-                icon.stop()
-                os._exit(0)
-
-            hotkey_display = settings.get("hotkey_display", "Ctrl+Space")
-            tray = pystray.Icon(
-                "QStrauss Voice",
-                tray_image,
-                f"QStrauss Voice - {hotkey_display}",
-                menu=pystray.Menu(
-                    pystray.MenuItem("Mostrar", on_show, default=True),
-                    pystray.MenuItem("Salir", on_quit),
-                ),
-            )
-            threading.Thread(target=tray.run, daemon=True).start()
-            log("System tray icon created")
-        except Exception as e:
-            log(f"Tray icon error (non-fatal): {e}")
-
-        # Main poll loop
-        def poll():
-            if _pending["model_ready"]:
-                _pending["model_ready"] = False
-                startup_label.config(text="¡Listo! Presiona Ctrl+Space")
-                log("Model ready — hiding startup in 2s, then showing settings")
-
-                def _show_after_load():
-                    root.withdraw()
+                def on_show(icon, item):
                     settings_win.show()
 
-                root.after(2000, _show_after_load)
+                def on_quit(icon, item):
+                    icon.stop()
+                    os._exit(0)
 
-            s = _pending["status"]
-            if s is not None:
-                _pending["status"] = None
-                log(f"_apply_status: {s}")
-                if s == "recording":
-                    overlay.show("listening")
-                elif s == "transcribing":
-                    overlay.set_status("transcribing")
-                else:
-                    overlay.hide()
+                hotkey_display = settings.get("hotkey_display", "Ctrl + Space")
+                tray = pystray.Icon(
+                    "QStrauss Voice", tray_img,
+                    f"QStrauss Voice — {hotkey_display}",
+                    menu=pystray.Menu(
+                        pystray.MenuItem("Mostrar", on_show, default=True),
+                        pystray.MenuItem("Salir", on_quit),
+                    ),
+                )
+                threading.Thread(target=tray.run, daemon=True).start()
+                log("Tray icon created")
+            except Exception as e:
+                log(f"Tray error: {e}")
 
-            root.after(50, poll)
-
-        root.after(50, poll)
-
-        def on_close():
-            root.withdraw()
-        root.protocol("WM_DELETE_WINDOW", on_close)
-
-        log("Entering mainloop")
-        root.mainloop()
+        log("Starting webview main loop")
+        webview.start(on_start, debug=False)
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
@@ -809,7 +762,28 @@ def log(msg):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"{time.strftime('%H:%M:%S')} {msg}\n")
 
+LOCK_FILE = os.path.join(BASE_DIR, "app.lock")
+
+def _acquire_lock():
+    """Single-instance lock. Returns False if another instance is already running."""
+    if not IS_WINDOWS:
+        return True
+    import ctypes
+    mutex = ctypes.windll.kernel32.CreateMutexW(None, True, "QStraussVoice_SingleInstance")
+    err = ctypes.windll.kernel32.GetLastError()
+    if err == 183:  # ERROR_ALREADY_EXISTS
+        return False
+    _hotkey_refs.append(mutex)  # keep reference alive
+    return True
+
 def main():
+    if IS_WINDOWS and not _acquire_lock():
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0, "QStrauss Voice ya está corriendo.", "QStrauss Voice", 0x40
+        )
+        return
+
     # Clear log
     with open(LOG_FILE, "w") as f:
         f.write("")
