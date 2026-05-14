@@ -18,7 +18,7 @@ SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
 HTML_FILE = os.path.join(BASE_DIR, "resources", "settings.html")
 
 DEFAULT_SETTINGS = {
-    "whisper_model": "base",
+    "whisper_model": "turbo",
     "language": "auto",
     "microphone": "default",
     "hotkey_mod": "alt" if IS_MAC else "ctrl",
@@ -84,12 +84,11 @@ class SettingsWindow:
         self._build()
 
     def _build(self):
-        W, H = 500, 720
+        W, H = 420, 640
 
         mask = (
             AppKit.NSWindowStyleMaskTitled
             | AppKit.NSWindowStyleMaskClosable
-            | AppKit.NSWindowStyleMaskMiniaturizable
         )
         self._window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, W, H), mask, AppKit.NSBackingStoreBuffered, False
@@ -97,12 +96,12 @@ class SettingsWindow:
         self._window.setTitle_("QStrauss Voice")
         self._window.center()
 
-        # Dark appearance
+        # Dark appearance — navy brand color
         dark = AppKit.NSAppearance.appearanceNamed_("NSAppearanceNameDarkAqua")
         self._window.setAppearance_(dark)
         self._window.setTitlebarAppearsTransparent_(True)
         self._window.setBackgroundColor_(
-            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.17, 0.10, 1.0)
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.043, 0.067, 0.20, 1.0)
         )
 
         # WebView

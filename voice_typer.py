@@ -204,7 +204,11 @@ def stop_and_transcribe(update_ui=None):
             tmp.name,
             language=current_language(),
             beam_size=1,
+            temperature=0,
             vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 300, "speech_pad_ms": 200},
+            condition_on_previous_text=False,
+            no_speech_threshold=0.6,
             initial_prompt=state["initial_prompt"] or None,
         )
         text = " ".join(s.text for s in segs).strip()
@@ -413,9 +417,16 @@ def _start_hotkey_windows(update_ui=None):
 # ─── Load model ──────────────────────────────────────────────────────────────
 
 def load_model():
-    model_name = settings.get("whisper_model", "base")
-    log(f"Loading Whisper '{model_name}'...")
-    state["model"] = WhisperModel(model_name, device="cpu", compute_type="int8")
+    model_name = settings.get("whisper_model", "turbo")
+    cpu_threads = max(4, os.cpu_count() or 4)
+    log(f"Loading Whisper '{model_name}' (cpu_threads={cpu_threads})...")
+    state["model"] = WhisperModel(
+        model_name,
+        device="cpu",
+        compute_type="int8",
+        cpu_threads=cpu_threads,
+        num_workers=1,
+    )
     log("Model ready.")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -529,9 +540,27 @@ if IS_MAC:
 
     def run_mac():
         app = AppKit.NSApplication.sharedApplication()
-        # Regular policy so Carbon hotkeys are delivered
-        # LSUIElement in Info.plist hides the Dock icon
         app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
+
+        # Build menu bar explicitly — fixes "Python" showing in menu bar
+        menubar = AppKit.NSMenu.alloc().init()
+        app_item = AppKit.NSMenuItem.alloc().init()
+        menubar.addItem_(app_item)
+        app.setMainMenu_(menubar)
+
+        app_menu = AppKit.NSMenu.alloc().initWithTitle_("QStrauss Voice")
+        app_menu.addItem_(
+            AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                "Acerca de QStrauss Voice", "orderFrontStandardAboutPanel:", ""
+            )
+        )
+        app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
+        app_menu.addItem_(
+            AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                "Salir de QStrauss Voice", "terminate:", "q"
+            )
+        )
+        app_item.setSubmenu_(app_menu)
 
         # Set app icon for when settings window is shown
         icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
