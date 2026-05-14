@@ -10,13 +10,11 @@ import re
 import sys
 import json
 import threading
-import tempfile
 import time
 import subprocess
 import numpy as np
 import sounddevice as sd
 import pyperclip
-import scipy.io.wavfile as wav
 from faster_whisper import WhisperModel
 
 IS_MAC     = sys.platform == "darwin"
@@ -63,6 +61,7 @@ state = {
     "corrections":    {},
     "initial_prompt": "",
     "model":          None,
+    "backend":        "faster_whisper",  # "mlx" on Apple Silicon, "faster_whisper" on Windows
 }
 lock = threading.Lock()
 
@@ -195,31 +194,40 @@ def stop_and_transcribe(update_ui=None):
             update_ui("idle")
         return
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.close()
-    wav.write(tmp.name, SAMPLE_RATE, audio)
-
+    t0 = time.time()
     try:
-        segs, info = state["model"].transcribe(
-            tmp.name,
-            language=current_language(),
-            beam_size=1,
-            temperature=0,
-            vad_filter=True,
-            vad_parameters={"min_silence_duration_ms": 300, "speech_pad_ms": 200},
-            condition_on_previous_text=False,
-            no_speech_threshold=0.6,
-            initial_prompt=state["initial_prompt"] or None,
-        )
-        text = " ".join(s.text for s in segs).strip()
-        log(f"Whisper result: '{text}' (lang={info.language}, prob={info.language_probability:.2f})")
+        if state.get("backend") == "mlx":
+            import mlx_whisper
+            result = mlx_whisper.transcribe(
+                audio,
+                path_or_hf_repo=state["model"],
+                language=current_language(),
+                verbose=False,
+                word_timestamps=False,
+                initial_prompt=state["initial_prompt"] or None,
+            )
+            text = result.get("text", "").strip()
+            lang = result.get("language", "?")
+            log(f"MLX result: '{text}' (lang={lang}) in {time.time()-t0:.1f}s")
+        else:
+            segs, info = state["model"].transcribe(
+                audio,
+                language=current_language(),
+                beam_size=1,
+                temperature=0,
+                vad_filter=True,
+                vad_parameters={"min_silence_duration_ms": 300, "speech_pad_ms": 200},
+                condition_on_previous_text=False,
+                no_speech_threshold=0.6,
+                initial_prompt=state["initial_prompt"] or None,
+            )
+            text = " ".join(s.text for s in segs).strip()
+            log(f"Whisper result: '{text}' (lang={info.language}, prob={info.language_probability:.2f}) in {time.time()-t0:.1f}s")
     except Exception as e:
         log(f"Transcription ERROR: {e}")
         if update_ui:
             update_ui("idle")
         return
-    finally:
-        os.unlink(tmp.name)
 
     if update_ui:
         update_ui("idle")
@@ -416,18 +424,43 @@ def _start_hotkey_windows(update_ui=None):
 
 # ─── Load model ──────────────────────────────────────────────────────────────
 
+_MLX_MODEL_MAP = {
+    "tiny":     "mlx-community/whisper-tiny",
+    "base":     "mlx-community/whisper-base",
+    "small":    "mlx-community/whisper-small",
+    "medium":   "mlx-community/whisper-medium",
+    "turbo":    "mlx-community/whisper-large-v3-turbo",
+    "large-v3": "mlx-community/whisper-large-v3",
+}
+
 def load_model():
     model_name = settings.get("whisper_model", "turbo")
+
+    if IS_MAC:
+        try:
+            import mlx_whisper  # noqa: F401 — confirm it's installed
+            repo = _MLX_MODEL_MAP.get(model_name, "mlx-community/whisper-large-v3-turbo")
+            log(f"MLX Whisper ready (Metal GPU): {repo}")
+            state["model"]   = repo
+            state["backend"] = "mlx"
+            return
+        except ImportError:
+            log("mlx-whisper not installed — falling back to faster-whisper CPU")
+        except Exception as e:
+            log(f"MLX Whisper error — falling back to faster-whisper: {e}")
+
+    # Windows or MLX fallback
     cpu_threads = max(4, os.cpu_count() or 4)
-    log(f"Loading Whisper '{model_name}' (cpu_threads={cpu_threads})...")
-    state["model"] = WhisperModel(
+    log(f"Loading faster-whisper '{model_name}' (cpu_threads={cpu_threads})...")
+    state["model"]   = WhisperModel(
         model_name,
         device="cpu",
         compute_type="int8",
         cpu_threads=cpu_threads,
         num_workers=1,
     )
-    log("Model ready.")
+    state["backend"] = "faster_whisper"
+    log("faster-whisper ready (CPU)")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  macOS — Invisible background app (PyObjC)

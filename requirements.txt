@@ -1,11 +1,11 @@
 faster-whisper>=1.0.0
 sounddevice>=0.4.6
 numpy>=1.24.0
-scipy>=1.11.0
 pyperclip>=1.8.2
 pynput>=1.7.6
 
-# Mac only
+# Mac only — mlx-whisper uses Metal GPU, 10-20x faster than CPU on Apple Silicon
+mlx-whisper>=0.4.0; sys_platform == "darwin"
 rumps>=0.4.0; sys_platform == "darwin"
 
 # Windows only
