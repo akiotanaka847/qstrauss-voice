@@ -599,10 +599,46 @@ elif IS_WINDOWS:
         except Exception:
             pass
 
+    def _set_win32_icon():
+        """Set QStrauss .ico on all top-level windows via Win32 enumeration."""
+        try:
+            ico_path = os.path.join(RESOURCES_DIR, "QStraussVoice.ico")
+            LR_LOADFROMFILE = 0x0010
+            IMAGE_ICON = 1
+            hicon = ctypes.windll.user32.LoadImageW(
+                None, ico_path, IMAGE_ICON, 0, 0, LR_LOADFROMFILE
+            )
+            if not hicon:
+                log("LoadImageW returned null — .ico not found?")
+                return
+            WM_SETICON = 0x0080
+            buf = ctypes.create_unicode_buffer(256)
+
+            def _enum_cb(hwnd, lparam):
+                ctypes.windll.user32.GetWindowTextW(hwnd, buf, 256)
+                if "QStrauss Voice" in buf.value:
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, 1, hicon)  # ICON_BIG
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, 0, hicon)  # ICON_SMALL
+                return True
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+            ctypes.windll.user32.EnumWindows(WNDENUMPROC(_enum_cb), 0)
+            log("Win32 icons applied")
+        except Exception as e:
+            log(f"Win32 icon error (non-fatal): {e}")
+
     def run_windows():
         import webview
 
         log("run_windows starting...")
+
+        # Fix taskbar name + icon: must be called BEFORE any window is created
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QStrauss.Voice")
+            log("AppUserModelID set: QStrauss.Voice")
+        except Exception as e:
+            log(f"AppUserModelID error (non-fatal): {e}")
+
         _hide_console()
 
         # Screen size via Win32 (no tkinter needed)
@@ -787,6 +823,13 @@ function setStatus(s){
                 log("Tray icon created")
             except Exception as e:
                 log(f"Tray error: {e}")
+
+            # Apply QStrauss icon to all open windows after a short delay
+            # (windows may not yet have handles at on_start time)
+            def _apply_icon_delayed():
+                time.sleep(1.5)
+                _set_win32_icon()
+            threading.Thread(target=_apply_icon_delayed, daemon=True).start()
 
         log("Starting webview main loop")
         webview.start(on_start, debug=False)
