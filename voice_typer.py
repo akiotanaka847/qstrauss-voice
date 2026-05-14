@@ -539,10 +539,20 @@ if IS_MAC:
             return True
 
     def run_mac():
+        # Force process name BEFORE NSApplication so macOS menu bar shows
+        # "QStrauss Voice" instead of "Python"
+        import ctypes
+        try:
+            ctypes.cdll.LoadLibrary("libc.dylib").setprogname(b"QStrauss Voice")
+        except Exception:
+            pass
+        from Foundation import NSProcessInfo
+        NSProcessInfo.processInfo().setProcessName_("QStrauss Voice")
+
         app = AppKit.NSApplication.sharedApplication()
         app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
 
-        # Build menu bar explicitly — fixes "Python" showing in menu bar
+        # Build menu bar explicitly
         menubar = AppKit.NSMenu.alloc().init()
         app_item = AppKit.NSMenuItem.alloc().init()
         menubar.addItem_(app_item)
