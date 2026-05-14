@@ -30,7 +30,7 @@ SAMPLE_RATE     = 16000
 # ─── Settings ────────────────────────────────────────────────────────────────
 
 DEFAULT_SETTINGS = {
-    "whisper_model": "turbo",
+    "whisper_model": "small",
     "language": "auto",
     "microphone": "default",
     "hotkey_mod": "alt" if IS_MAC else "ctrl",
