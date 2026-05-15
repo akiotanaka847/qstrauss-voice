@@ -8,3 +8,6 @@ __pycache__/
 app.log
 settings.json
 *.spec
+
+# macOS app bundle (built artifact — launch from /Applications/)
+*.app/
