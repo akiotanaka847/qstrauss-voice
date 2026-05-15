@@ -425,12 +425,12 @@ def _start_hotkey_windows(update_ui=None):
 # ─── Load model ──────────────────────────────────────────────────────────────
 
 _MLX_MODEL_MAP = {
-    "tiny":     "mlx-community/whisper-tiny",
-    "base":     "mlx-community/whisper-base",
-    "small":    "mlx-community/whisper-small",
-    "medium":   "mlx-community/whisper-medium",
+    "tiny":     "mlx-community/whisper-large-v3-turbo",
+    "base":     "mlx-community/whisper-large-v3-turbo",
+    "small":    "mlx-community/whisper-large-v3-turbo",
+    "medium":   "mlx-community/whisper-large-v3-turbo",
     "turbo":    "mlx-community/whisper-large-v3-turbo",
-    "large-v3": "mlx-community/whisper-large-v3",
+    "large-v3": "mlx-community/whisper-large-v3-turbo",
 }
 
 def load_model():
