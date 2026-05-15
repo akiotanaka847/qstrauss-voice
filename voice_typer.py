@@ -547,9 +547,10 @@ if IS_MAC:
             log(f"_apply_status: {status}")
             if status == "recording":
                 self._overlay.show("listening")
-                log("overlay.show() called")
             elif status == "transcribing":
-                self._overlay.set_status("transcribing")
+                # Always call show() — overlay may be hidden if "recording"
+                # status was skipped by the single-slot _pending_status queue
+                self._overlay.show("transcribing")
             else:
                 self._overlay.hide()
 
@@ -572,15 +573,22 @@ if IS_MAC:
             return True
 
     def run_mac():
-        # Force process name BEFORE NSApplication so macOS menu bar shows
-        # "QStrauss Voice" instead of "Python"
+        # Rename process so macOS shows "QStrauss Voice" everywhere
+        # (menu bar bold name, Cmd+Tab switcher, dock label)
         import ctypes
         try:
             ctypes.cdll.LoadLibrary("libc.dylib").setprogname(b"QStrauss Voice")
         except Exception:
             pass
-        from Foundation import NSProcessInfo
+        from Foundation import NSProcessInfo, NSBundle
         NSProcessInfo.processInfo().setProcessName_("QStrauss Voice")
+        # Patch CFBundleName in the live bundle dict — affects dock label
+        try:
+            info = NSBundle.mainBundle().infoDictionary()
+            info.setValue_forKey_("QStrauss Voice", "CFBundleName")
+            info.setValue_forKey_("QStrauss Voice", "CFBundleDisplayName")
+        except Exception:
+            pass
 
         app = AppKit.NSApplication.sharedApplication()
         app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
