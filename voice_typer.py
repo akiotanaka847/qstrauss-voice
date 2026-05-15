@@ -479,19 +479,7 @@ if IS_MAC:
         def applicationDidFinishLaunching_(self, notification):
             log("App launched")
 
-            # Hidden 1x1 off-screen window — keeps Carbon event loop alive
-            # even when user closes the settings window
-            self._keepAlive = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-                NSMakeRect(-9999, -9999, 1, 1),
-                AppKit.NSWindowStyleMaskBorderless,
-                AppKit.NSBackingStoreBuffered,
-                False,
-            )
-            self._keepAlive.setOpaque_(False)
-            self._keepAlive.setBackgroundColor_(AppKit.NSColor.clearColor())
-            self._keepAlive.setLevel_(-1)
-            self._keepAlive.orderFront_(None)
-            log("Keep-alive window created")
+            # No keep-alive window needed — NSStatusItem keeps the run loop alive
 
             # Audio stream
             try:
@@ -587,11 +575,14 @@ if IS_MAC:
             info = NSBundle.mainBundle().infoDictionary()
             info.setValue_forKey_("QStrauss Voice", "CFBundleName")
             info.setValue_forKey_("QStrauss Voice", "CFBundleDisplayName")
+            # LSUIElement=1 BEFORE sharedApplication() → macOS never registers
+            # this process with the Dock or Cmd+Tab switcher
+            info.setValue_forKey_("1", "LSUIElement")
         except Exception:
             pass
 
         app = AppKit.NSApplication.sharedApplication()
-        app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
+        app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
 
         # Build complete menu structure BEFORE calling setMainMenu_
         # macOS reads the app name from app_item's submenu title at the moment

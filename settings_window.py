@@ -89,6 +89,7 @@ class SettingsWindow:
         mask = (
             AppKit.NSWindowStyleMaskTitled
             | AppKit.NSWindowStyleMaskClosable
+            | AppKit.NSWindowStyleMaskMiniaturizable
         )
         self._window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, W, H), mask, AppKit.NSBackingStoreBuffered, False
@@ -198,12 +199,16 @@ class SettingsWindow:
             self._webview.evaluateJavaScript_completionHandler_(js, None)
 
     def show(self):
+        # Temporarily become a regular app so window controls work fully
+        AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
         self._window.makeKeyAndOrderFront_(None)
         AppKit.NSApp.activateIgnoringOtherApps_(True)
         self._inject_settings()
 
     def hide(self):
         self._window.orderOut_(None)
+        # Return to accessory (menu-bar-only) mode — no Dock icon
+        AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
 
     def toggle(self):
         if self._window.isVisible():
