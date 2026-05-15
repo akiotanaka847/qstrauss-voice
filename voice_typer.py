@@ -593,12 +593,9 @@ if IS_MAC:
         app = AppKit.NSApplication.sharedApplication()
         app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
 
-        # Build menu bar explicitly
-        menubar = AppKit.NSMenu.alloc().init()
-        app_item = AppKit.NSMenuItem.alloc().init()
-        menubar.addItem_(app_item)
-        app.setMainMenu_(menubar)
-
+        # Build complete menu structure BEFORE calling setMainMenu_
+        # macOS reads the app name from app_item's submenu title at the moment
+        # setMainMenu_ is called — if submenu isn't set yet it falls back to "Python"
         app_menu = AppKit.NSMenu.alloc().initWithTitle_("QStrauss Voice")
         app_menu.addItem_(
             AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -611,7 +608,13 @@ if IS_MAC:
                 "Salir de QStrauss Voice", "terminate:", "q"
             )
         )
-        app_item.setSubmenu_(app_menu)
+
+        app_item = AppKit.NSMenuItem.alloc().init()
+        app_item.setSubmenu_(app_menu)   # submenu set BEFORE adding to menubar
+
+        menubar = AppKit.NSMenu.alloc().init()
+        menubar.addItem_(app_item)
+        app.setMainMenu_(menubar)        # set AFTER full structure is ready
 
         # Set app icon for when settings window is shown
         icon_path = os.path.join(RESOURCES_DIR, "icon_1024.png")
