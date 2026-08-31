@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QStrauss Voice</title>
+  <link rel="icon" type="image/png" href="../icon.png">
+  <link rel="apple-touch-icon" href="../icon.png">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+      <img src="../icon.png" alt="QStrauss Voice">
+      <h1>QStrauss <span>Voice</span></h1>
+      <p>Dictado por voz que nunca sale de tu computadora. Presiona un atajo, habla, y el texto aparece donde est&aacute; tu cursor.</p>
+    </div>
+
+    <!-- Download Cards -->
+    <div class="downloads">
+      <div class="dl-card">
+        <span class="platform-icon">&#63743;</span>
+        <h2>macOS</h2>
+        <div class="hotkey">&#x2325; Space (Option + Space)</div>
+        <div class="size">~222 MB &middot; macOS 13+</div>
+        <a class="btn" id="btn-mac" href="https://github.com/akiotanaka847/qstrauss-voice/releases/latest/download/QStrauss-Voice-mac.zip">
+          Descargar para Mac
+        </a>
+      </div>
+      <div class="dl-card">
+        <span class="platform-icon">&#xe2;</span>
+        <h2>Windows</h2>
+        <div class="hotkey">Ctrl + Space</div>
+        <div class="size">Windows 10+ &middot; pr&oacute;ximamente</div>
+        <a class="btn" id="btn-win" href="https://github.com/akiotanaka847/qstrauss-voice/releases/latest/download/QStrauss-Voice-win.zip">
+          Descargar para Windows
+        </a>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature">
+        <h3><span>&#x1f510;</span> 100% Local</h3>
+        <p>Todo se procesa en tu computadora. Tu voz nunca sale a internet. Sin cuentas, sin suscripciones.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x26a1;</span> Invisible</h3>
+        <p>Sin iconos en el dock o barra de tareas. Solo aparece cuando lo necesitas con el atajo de teclado.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x1f30e;</span> Multi-idioma</h3>
+        <p>Detecta autom&aacute;ticamente el idioma o configura uno fijo. Soporta espa&ntilde;ol, ingl&eacute;s, y 90+ idiomas.</p>
+      </div>
+      <div class="feature">
+        <h3><span>&#x2328;</span> Atajo Personalizable</h3>
+        <p>Configura las teclas que quieras. Mac: <code>&#x2325; Space</code> por defecto. Windows: <code>Ctrl+Space</code> por defecto.</p>
+      </div>
+    </div>
+
+    <!-- Install Instructions -->
+    <div class="install">
+      <h2>Instalaci&oacute;n</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('mac')">macOS</button>
+        <button class="tab" onclick="showTab('win')">Windows</button>
+      </div>
+
+      <div id="tab-mac" class="tab-content active">
+        <ol class="steps">
+          <li>Descarga y descomprime <strong>QStrauss-Voice-mac.zip</strong></li>
+          <li>Arrastra <strong>QStrauss Voice.app</strong> a la carpeta <code>/Applications</code></li>
+          <li>Abre la app &mdash; Si aparece "desarrollador no identificado": click derecho &rarr; Abrir</li>
+          <li>Dale permiso de <strong>Micr&oacute;fono</strong> cuando macOS pregunte</li>
+          <li>Configura tu atajo en la ventana de Settings (por defecto <code>&#x2325; Space</code>)</li>
+          <li>Cierra Settings &mdash; la app queda invisible en segundo plano</li>
+          <li>Desde cualquier app: presiona tu atajo &rarr; habla &rarr; presiona otra vez &rarr; texto pegado</li>
+        </ol>
+      </div>
+
+      <div id="tab-win" class="tab-content">
+        <ol class="steps">
+          <li>Descarga y descomprime <strong>QStrauss-Voice-win.zip</strong></li>
+          <li>Abre la carpeta y ejecuta <strong>QStrauss Voice.exe</strong></li>
+          <li>Si aparece <strong>"Windows protegi&oacute; su PC"</strong>: click en <code>M&aacute;s informaci&oacute;n</code> &rarr; <code>Ejecutar de todas formas</code></li>
+          <li>La app aparece en la <strong>bandeja del sistema</strong> (esquina inferior derecha, junto al reloj)</li>
+          <li>Desde cualquier app: presiona <code>Ctrl+Space</code> &rarr; habla &rarr; presiona <code>Ctrl+Space</code> otra vez &rarr; texto pegado</li>
+        </ol>
+      </div>
+    </div>
+
+    <footer>
+      QStrauss Voice v1.0.0 &mdash; Built by <a href="#">QStrauss</a>
+    </footer>
+
+  </div>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>
