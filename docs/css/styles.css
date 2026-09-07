@@ -24,6 +24,87 @@ body {
 .hero h1 span { color: var(--green); }
 .hero p { font-size: 18px; color: var(--muted); max-width: 500px; margin: 0 auto; line-height: 1.6; }
 
+/* Hero 3D robot */
+.hero-3d {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  height: clamp(220px, 32vw, 320px);
+  margin: 28px auto 0;
+  pointer-events: none; /* decorative: never swallow clicks */
+  contain: layout paint;
+}
+
+.hero-3d__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.45s ease-out;
+}
+.hero-3d.is-ready .hero-3d__canvas { opacity: 1; }
+
+/* Glow pool: gives the dark silhouette something lighter to read against.
+   Negative z-index keeps it under the canvas; `contain: paint` scopes it. */
+.hero-3d::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 78%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+    rgba(52, 208, 88, 0.16), rgba(52, 208, 88, 0.05) 45%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+  pointer-events: none;
+}
+.hero-3d.is-ready::before { opacity: 1; }
+
+/* Contact shadow: cheaper than a shadow map and reads better over --bg */
+.hero-3d::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  width: 42%;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.45s ease-out 0.1s;
+  pointer-events: none;
+}
+.hero-3d.is-ready::after { opacity: 1; }
+
+.hero-3d__loader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity 0.3s ease-out;
+}
+.hero-3d.is-ready .hero-3d__loader { opacity: 0; visibility: hidden; }
+
+.hero-3d__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--green);
+  animation: spin 0.9s linear infinite;
+}
+
+@media (max-width: 600px) {
+  .hero-3d { height: 200px; margin-top: 20px; }
+  .hero-3d::after { width: 50%; height: 16px; }
+}
+
 /* Download cards */
 .downloads { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 56px; }
 @media (max-width: 600px) { .downloads { grid-template-columns: 1fr; } }
@@ -182,6 +263,10 @@ footer a { color: var(--green); text-decoration: none; }
   50%      { transform: translateY(-6px); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes ring-pulse {
   0%, 100% { box-shadow: 0 0 0 2px var(--green); }
   50%      { box-shadow: 0 0 0 5px rgba(52, 208, 88, 0.25); }
@@ -310,4 +395,6 @@ footer a:focus-visible {
     transition-duration: 0.01ms !important;
   }
   .hero img { animation: none; }
+  /* Backs up the bootstrap's host.remove() in case the JS never runs */
+  .hero-3d { display: none; }
 }

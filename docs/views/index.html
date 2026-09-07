@@ -7,6 +7,14 @@
   <link rel="icon" type="image/png" href="../icon.png">
   <link rel="apple-touch-icon" href="../icon.png">
   <link rel="stylesheet" href="../css/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <div class="container">
@@ -16,6 +24,11 @@
       <img src="../icon.png" alt="QStrauss Voice">
       <h1>QStrauss <span>Voice</span></h1>
       <p>Dictado por voz que nunca sale de tu computadora. Presiona un atajo, habla, y el texto aparece donde est&aacute; tu cursor.</p>
+
+      <div class="hero-3d" id="hero-3d" aria-hidden="true">
+        <canvas class="hero-3d__canvas"></canvas>
+        <div class="hero-3d__loader"><span class="hero-3d__spinner"></span></div>
+      </div>
     </div>
 
     <!-- Download Cards -->
@@ -98,5 +111,30 @@
   </div>
 
   <script src="../js/main.js"></script>
+
+  <!-- Bails out before downloading anything when WebGL or motion is off -->
+  <script type="module">
+    const host = document.getElementById('hero-3d');
+    if (host) {
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let webgl = false;
+      try {
+        const c = document.createElement('canvas');
+        webgl = !!(window.WebGL2RenderingContext && c.getContext('webgl2'));
+      } catch (_) {
+        webgl = false;
+      }
+
+      if (reduce || !webgl) {
+        host.remove();
+      } else {
+        const start = () => import('../js/robot3d.js')
+          .then(m => m.initRobot3D(host))
+          .catch(err => { console.warn('[robot3d] deshabilitado:', err); host.remove(); });
+        if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 1500 });
+        else setTimeout(start, 200);
+      }
+    }
+  </script>
 </body>
 </html>
