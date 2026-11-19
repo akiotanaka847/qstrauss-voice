@@ -10,7 +10,12 @@ permissions:
 jobs:
   # ── macOS Build ──────────────────────────────────────────────────────────────
   build-mac:
-    runs-on: macos-14
+    # arm64 obligatorio: la app usa MLX, que solo corre en Apple Silicon. Un
+    # build en x64 sale sin MLX y cae al fallback de CPU sin avisar.
+    # Fijada a proposito: cuando GitHub retire esta imagen, el job falla con
+    # 'configuration ... is not supported' y hay que subirla. macos-14 se
+    # retiro asi en noviembre de 2026 y cancelo la release v1.2.0.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
