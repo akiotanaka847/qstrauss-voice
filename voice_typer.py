@@ -917,8 +917,20 @@ def _start_hotkey_windows(update_ui=None):
         except Exception:
             main_key = keyboard.Key.space
 
+    # Atajo para aprender de una corrección (mismos ajustes que en macOS).
+    learn_mods = _WIN_MOD_MAP.get(
+        str(settings.get("hotkey_aprender_mod", "alt")).lower(),
+        (keyboard.Key.alt_l, keyboard.Key.alt_r))
+    try:
+        learn_key = keyboard.KeyCode.from_char(
+            str(settings.get("hotkey_aprender_key", "l")).lower())
+    except Exception:
+        learn_key = None
+    aprender_on = settings.get("aprender_correcciones", True) and learn_key is not None
+
     pressed_keys = set()
     _last_fire = [0.0]
+    _last_learn = [0.0]
 
     def on_press(key):
         pressed_keys.add(key)
@@ -931,6 +943,24 @@ def _start_hotkey_windows(update_ui=None):
             log(">>> ESCAPE <<<")
             cancel_recording(update_ui=update_ui)
             return
+
+        # Aprender. Con Alt presionado pynput puede entregar la tecla como
+        # KeyCode con char o solo con vk, así que se compara por las dos vías.
+        if aprender_on and any(m in pressed_keys for m in learn_mods):
+            # En Windows el código virtual de una letra es su mayúscula en
+            # ASCII ("l" -> 0x4C). KeyCode.from_char no lo rellena, así que
+            # comparar contra learn_key.vk nunca coincidía.
+            letra = learn_key.char or ""
+            vk_letra = ord(letra.upper()) if len(letra) == 1 and letra.isalpha() else None
+            es_learn = (key == learn_key or
+                        (vk_letra is not None and getattr(key, "vk", None) == vk_letra) or
+                        (getattr(key, "char", None) or "").lower() == letra)
+            if es_learn and time.time() - _last_learn[0] > 0.6:
+                _last_learn[0] = time.time()
+                log(">>> APRENDER <<<")
+                threading.Thread(target=aprender_de_portapapeles,
+                                 kwargs={"update_ui": update_ui}, daemon=True).start()
+                return
 
         mod_held = any(mk in pressed_keys for mk in mod_keys)
         if mod_held and key == main_key:
