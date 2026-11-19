@@ -19,6 +19,7 @@ from faster_whisper import WhisperModel
 
 import vad
 import terms
+import learn
 
 IS_MAC     = sys.platform == "darwin"
 IS_WINDOWS = sys.platform == "win32"
@@ -107,6 +108,9 @@ DEFAULT_SETTINGS = {
     "vad_speech_pad_ms": 200,
     "vad_min_silence_ms": 300,
     "fuzzy_terms": True,
+    "aprender_correcciones": True,
+    "hotkey_aprender_mod": "alt",
+    "hotkey_aprender_key": "l",
 }
 
 def load_settings():
@@ -139,6 +143,9 @@ state = {
     "model_error":    None,
     "ultimo_uso":     0.0,
     "descargado":     False,
+    # Última transcripción, SOLO en memoria. Nunca toca el disco: es lo
+    # que permite aprender de una corrección sin guardar historial.
+    "ultima":         "",
     "model":          None,
     "backend":        "faster_whisper",  # "mlx" on Apple Silicon, "faster_whisper" on Windows
 }
@@ -239,6 +246,73 @@ def start_audio_stream():
 def current_language():
     lang = settings.get("language", "auto")
     return None if lang == "auto" else lang
+
+# ─── Aprender de una corrección ──────────────────────────────────────────────
+
+def aprender_de_portapapeles(update_ui=None):
+    """Compara el portapapeles con la última transcripción y aprende.
+
+    Flujo pensado para no interrumpir: dictas, corriges el texto donde ya
+    estás, lo seleccionas, copias y pulsas el atajo. No hace falta abrir nada
+    ni volver a la app.
+    """
+    original = (state.get("ultima") or "").strip()
+    if not original:
+        log("Aprender: no hay transcripción reciente en memoria")
+        if update_ui:
+            update_ui("sin_correccion")
+        return
+
+    try:
+        corregido = (pyperclip.paste() or "").strip()
+    except Exception as e:
+        log("Aprender: no se pudo leer el portapapeles: %s" % e)
+        return
+
+    if not corregido:
+        log("Aprender: el portapapeles está vacío")
+        if update_ui:
+            update_ui("sin_correccion")
+        return
+    if terms.clave(corregido) == terms.clave(original):
+        log("Aprender: el portapapeles es igual a lo transcrito, nada que aprender")
+        if update_ui:
+            update_ui("sin_correccion")
+        return
+
+    try:
+        aprendibles, descartados = learn.extraer_correcciones(
+            original, corregido, state.get("lexico"))
+    except Exception as e:
+        log("Aprender: error comparando: %s" % e)
+        return
+
+    for d in descartados:
+        log("  no se aprende: %s -> %s (%s)" % (d["oido"], d["corregido"], d["motivo"]))
+
+    if not aprendibles:
+        log("Aprender: ninguna diferencia califica como corrección de término")
+        if update_ui:
+            update_ui("sin_correccion")
+        return
+
+    try:
+        nuevas, ya = learn.aplicar(aprendibles, DICTIONARY_FILE)
+    except Exception as e:
+        log("Aprender: no se pudo escribir el diccionario: %s" % e)
+        return
+
+    if nuevas:
+        for c in nuevas:
+            log("APRENDIDO: %s -> %s (%s)" % (c["oido"], c["corregido"], c["motivo"]))
+        reload_dictionary()   # aplica desde el siguiente dictado, sin reiniciar
+        if update_ui:
+            update_ui("aprendido")
+    else:
+        log("Aprender: esas correcciones ya estaban en el diccionario")
+        if update_ui:
+            update_ui("sin_correccion")
+
 
 # ─── Foco y pegado ───────────────────────────────────────────────────────────
 #
@@ -514,6 +588,7 @@ def _stop_and_transcribe(update_ui=None):
         text += " "
 
     state["ultimo_uso"] = time.time()
+    state["ultima"] = text.strip()
     log(f"Transcribed: {text.strip()}")
 
     with lock:
@@ -673,7 +748,7 @@ def _start_hotkey_mac(update_ui=None):
     kEventHotKeyReleased = 6
     kEventParamDirectObject = 0x6F626A20   # 'obj '
     typeEventHotKeyID       = 0x686B6964   # 'hkid'
-    ID_TOGGLE, ID_CANCEL = 1, 2
+    ID_TOGGLE, ID_CANCEL, ID_LEARN = 1, 2, 3
 
     def _quien_disparo(event):
         hk = EventHotKeyID()
@@ -691,6 +766,13 @@ def _start_hotkey_mac(update_ui=None):
             if not soltada:
                 log(">>> ESCAPE <<<")
                 cancel_recording(update_ui=update_ui)
+            return 0
+
+        if cual == ID_LEARN:
+            if not soltada:
+                log(">>> APRENDER <<<")
+                threading.Thread(target=aprender_de_portapapeles,
+                                 kwargs={"update_ui": update_ui}, daemon=True).start()
             return 0
 
         # Mantener presionado: pulsar graba, soltar transcribe. Sin esto, el
@@ -750,6 +832,30 @@ def _start_hotkey_mac(update_ui=None):
         return
     _hotkey_refs.append(hotkey_ref)
     log(f"Carbon hotkey registered: {mod_name}+{key_name}")
+
+    # Atajo para aprender de una corrección. Este sí es permanente: no graba
+    # nada, solo lee el portapapeles cuando lo pulsas.
+    if settings.get("aprender_correcciones", True):
+        mod_ap = _MODIFIER_MAP.get(
+            str(settings.get("hotkey_aprender_mod", "alt")).lower(), 0x0800)
+        key_ap = _KEYCODE_MAP.get(
+            str(settings.get("hotkey_aprender_key", "l")).lower())
+        if key_ap is None:
+            log("Atajo de aprender inválido, se omite")
+        else:
+            ref_ap = c_void_p()
+            err_ap = carbon.RegisterEventHotKey(
+                c_uint32(key_ap), c_uint32(mod_ap),
+                EventHotKeyID(0x51565F31, ID_LEARN),
+                carbon.GetApplicationEventTarget(), c_uint32(0), byref(ref_ap),
+            )
+            if err_ap == 0:
+                _hotkey_refs.append(ref_ap)
+                log("Atajo para aprender registrado: %s+%s" % (
+                    settings.get("hotkey_aprender_mod", "alt"),
+                    settings.get("hotkey_aprender_key", "l")))
+            else:
+                log("RegisterEventHotKey(aprender) failed: %d" % err_ap)
 
     # Escape vive solo durante la grabación. Registrarlo de forma permanente
     # se lo quitaría a todas las apps del sistema.
@@ -1135,7 +1241,7 @@ if IS_MAC:
                 # status was skipped by the single-slot _pending_status queue
                 self._no_speech_until = 0.0
                 self._overlay.show("transcribing")
-            elif status in ("no_speech", "portapapeles", "sin_permiso", "cargando"):
+            elif status in ("no_speech", "portapapeles", "sin_permiso", "cargando", "aprendido", "sin_correccion"):
                 self._overlay.show(status)
                 self._no_speech_until = time.time() + NO_SPEECH_FLASH_S
             else:
@@ -1340,7 +1446,7 @@ function draw(){
       ctx.fillStyle='rgba(0,200,150,'+al+')';
       ctx.beginPath();ctx.arc(14+i*(252/17),cy+dy,3.5,0,Math.PI*2);ctx.fill();
     }
-  }else if(status==='no_speech'||status==='portapapeles'||status==='sin_permiso'||status==='cargando'){
+  }else if(status==='no_speech'||status==='portapapeles'||status==='sin_permiso'||status==='cargando'||status==='aprendido'||status==='sin_correccion'){
     ctx.strokeStyle='rgba(140,153,179,.85)';ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(14,cy);ctx.lineTo(266,cy);ctx.stroke();
   }else{
@@ -1355,7 +1461,7 @@ function draw(){
 draw();
 function setStatus(s){
   status=s;
-  var h={listening:'Presiona el atajo para detener',no_speech:'No se detecto voz',portapapeles:'Copiado, pega con Ctrl+V',sin_permiso:'Falta permiso, pega con Ctrl+V',cargando:'Cargando el modelo, espera'};
+  var h={listening:'Presiona el atajo para detener',no_speech:'No se detecto voz',portapapeles:'Copiado, pega con Ctrl+V',sin_permiso:'Falta permiso, pega con Ctrl+V',cargando:'Cargando el modelo, espera',aprendido:'Aprendido',sin_correccion:'Nada que aprender'};
   document.getElementById('hint').textContent=h[s]||'Un momento…';
 }
 </script></body></html>"""
@@ -1437,7 +1543,7 @@ function setStatus(s){
                             elif s == "transcribing":
                                 _no_speech_until[0] = 0.0
                                 overlay_win.evaluate_js("setStatus('transcribing')")
-                            elif s in ("no_speech", "portapapeles", "sin_permiso", "cargando"):
+                            elif s in ("no_speech", "portapapeles", "sin_permiso", "cargando", "aprendido", "sin_correccion"):
                                 overlay_win.show()
                                 overlay_win.evaluate_js("setStatus('%s')" % s)
                                 _no_speech_until[0] = time.time() + NO_SPEECH_FLASH_S
@@ -1508,9 +1614,34 @@ def log(msg):
 LOCK_FILE = os.path.join(DATA_DIR, "app.lock")
 
 def _acquire_lock():
-    """Single-instance lock. Returns False if another instance is already running."""
+    """Instancia única. False si ya hay otra corriendo.
+
+    En macOS esto devolvía True sin mirar nada, así que se podían abrir
+    instancias infinitas. Dos instancias responden al MISMO atajo global y se
+    pelean el micrófono: una arranca a grabar mientras la otra para, y la que
+    pierde el micro captura silencio puro. Visto en el log como dos
+    "HOTKEY PRESSED" en el mismo segundo con estados opuestos, grabaciones con
+    peak=0.0000 y una de 127 s por un toggle desincronizado. Se siente como
+    lentitud, pero no transcribe nada.
+
+    El lock es un archivo con flock: el bloqueo lo libera el sistema cuando el
+    proceso muere, incluso si lo matan, así que no quedan locks huérfanos como
+    pasaría comprobando un PID guardado.
+    """
     if not IS_WINDOWS:
-        return True
+        import fcntl
+        try:
+            f = open(LOCK_FILE, "w")
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            f.write(str(os.getpid()))
+            f.flush()
+            _hotkey_refs.append(f)   # mantener vivo el descriptor
+            return True
+        except (IOError, OSError):
+            return False
+        except Exception as e:
+            log("No se pudo tomar el lock: %s" % e)
+            return True   # ante la duda, dejar arrancar
     import ctypes
     mutex = ctypes.windll.kernel32.CreateMutexW(None, True, "QStraussVoice_SingleInstance")
     err = ctypes.windll.kernel32.GetLastError()
@@ -1520,11 +1651,22 @@ def _acquire_lock():
     return True
 
 def main():
-    if IS_WINDOWS and not _acquire_lock():
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(
-            0, "QStrauss Voice ya está corriendo.", "QStrauss Voice", 0x40
-        )
+    if not _acquire_lock():
+        # El aviso tiene que ser visible: la app arranca oculta, asi que un
+        # segundo arranque que solo escribe en el log parece que no hizo nada.
+        aviso = "%s ya está corriendo." % APP_NAME
+        print(aviso)
+        if IS_WINDOWS:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, aviso, APP_NAME, 0x40)
+        else:
+            try:
+                subprocess.run([
+                    "osascript", "-e",
+                    'display notification "%s" with title "%s"' % (aviso, APP_NAME)
+                ], timeout=5)
+            except Exception:
+                pass
         return
 
     # Clear log

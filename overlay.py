@@ -26,6 +26,8 @@ _LABELS = {
     "portapapeles":  "copiado, pega con \u2318V",
     "sin_permiso":   "falta permiso, pega con \u2318V",
     "cargando":      "cargando el modelo, espera",
+    "aprendido":     "aprendido",
+    "sin_correccion": "nada que aprender",
 }
 
 
@@ -54,7 +56,7 @@ class _OverlayView(AppKit.NSView):
 
         if self._status == "listening":
             self._drawWave(w, h)
-        elif self._status in ("no_speech", "portapapeles", "sin_permiso", "cargando"):
+        elif self._status in ("no_speech", "portapapeles", "sin_permiso", "cargando", "aprendido", "sin_correccion"):
             self._drawFlatLine(w, h)
         else:
             self._drawTranscribingDots(w, h)

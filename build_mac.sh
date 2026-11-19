@@ -37,12 +37,14 @@ pyinstaller \
   --add-data "settings_window.py:." \
   --add-data "vad.py:." \
   --add-data "terms.py:." \
+  --add-data "learn.py:." \
   --hidden-import "mlx_whisper" \
   --hidden-import "mlx" \
   --hidden-import "mlx.core" \
   --hidden-import "mlx.nn" \
   --hidden-import "vad" \
   --hidden-import "terms" \
+  --hidden-import "learn" \
   --hidden-import "spylls" \
   --hidden-import "onnxruntime" \
   --hidden-import "faster_whisper" \

@@ -29,8 +29,10 @@ pyinstaller ^
   --add-data "settings_window_win.py;." ^
   --add-data "vad.py;." ^
   --add-data "terms.py;." ^
+  --add-data "learn.py;." ^
   --hidden-import "vad" ^
   --hidden-import "terms" ^
+  --hidden-import "learn" ^
   --hidden-import "spylls" ^
   --hidden-import "onnxruntime" ^
   --hidden-import "faster_whisper" ^
